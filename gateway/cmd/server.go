@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -88,16 +89,13 @@ func handleFileUpload(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get the file from the form
+	// Get the files from the form
 	files := form.File["file"]
 	if len(files) == 0 {
 		return c.Status(400).JSON(fiber.Map{
-			"error": "No file provided",
+			"error": "No files provided",
 		})
 	}
-
-	// Get the first file (since we're handling just one file)
-	file := files[0]
 
 	// Generate a random URL string for this upload session
 	urlString := generateRandomURL()
@@ -110,46 +108,64 @@ func handleFileUpload(c *fiber.Ctx) error {
 		})
 	}
 
-	// Generate a unique filename with timestamp
+	// Process all uploaded files
+	var uploadedFiles []fiber.Map
+	var totalSize int64
 	timestamp := time.Now().Format("20060102_150405")
-	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("%s_%s%s", timestamp, file.Filename, ext)
-	filePath := filepath.Join(sessionFolder, filename)
 
-	// Open the uploaded file
-	src, err := file.Open()
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to open uploaded file",
-		})
-	}
-	defer src.Close()
+	for i, file := range files {
+		// Generate a unique filename with timestamp and index
+		// Keep the original filename but add timestamp and index prefix
+		filename := fmt.Sprintf("%s_%d_%s", timestamp, i+1, file.Filename)
+		filePath := filepath.Join(sessionFolder, filename)
 
-	// Create the destination file
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to create destination file",
-		})
-	}
-	defer dst.Close()
+		// Open the uploaded file
+		src, err := file.Open()
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to open file %s", file.Filename),
+			})
+		}
 
-	// Copy the file content
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to save file",
+		// Create the destination file
+		dst, err := os.Create(filePath)
+		if err != nil {
+			src.Close()
+			return c.Status(500).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to create destination file for %s", file.Filename),
+			})
+		}
+
+		// Copy the file content
+		_, err = io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to save file %s", file.Filename),
+			})
+		}
+
+		// Add file info to the response
+		uploadedFiles = append(uploadedFiles, fiber.Map{
+			"original_name": file.Filename,
+			"filename":      filename,
+			"size":          file.Size,
+			"path":          filePath,
 		})
+
+		totalSize += file.Size
 	}
 
 	// Return success response
 	return c.JSON(fiber.Map{
-		"message":    "File uploaded successfully",
+		"message":    "Files uploaded successfully",
 		"url":        urlString,
-		"filename":   filename,
-		"path":       filePath,
-		"size":       file.Size,
 		"session_id": urlString,
+		"files":      uploadedFiles,
+		"file_count": len(uploadedFiles),
+		"total_size": totalSize,
 	})
 }
 
@@ -206,10 +222,18 @@ func handleFileAccess(c *fiber.Ctx) error {
 				continue // Skip files that can't be read
 			}
 
+			// Extract original filename by removing timestamp and index prefix
+			originalName := file.Name()
+			// Remove timestamp_XX_ prefix to get original filename
+			if parts := strings.SplitN(file.Name(), "_", 3); len(parts) >= 3 {
+				originalName = parts[2] // Get everything after timestamp_XX_
+			}
+
 			fileList = append(fileList, fiber.Map{
-				"name": file.Name(),
-				"size": fileInfo.Size(),
-				"url":  fmt.Sprintf("/files/%s/download/%s", id, file.Name()),
+				"name":     originalName,
+				"filename": file.Name(), // Keep the actual stored filename for download
+				"size":     fileInfo.Size(),
+				"url":      fmt.Sprintf("/files/%s/download/%s", id, file.Name()),
 			})
 		}
 	}
@@ -259,6 +283,15 @@ func handleFileDownload(c *fiber.Ctx) error {
 			"error": "File not found.",
 		})
 	}
+
+	// Extract original filename for download
+	originalName := filename
+	if parts := strings.SplitN(filename, "_", 3); len(parts) >= 3 {
+		originalName = parts[2] // Get everything after timestamp_XX_
+	}
+
+	// Set the Content-Disposition header to use the original filename
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalName))
 
 	// Send the file
 	return c.SendFile(filePath)
