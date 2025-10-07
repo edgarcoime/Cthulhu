@@ -90,17 +90,13 @@ export default function FideDropzone({ }: FileDropzoneProps) {
 
   return (
     <div
-      className="rounded-xl p-8 shadow-2xl backdrop-blur-lg"
-      style={{
-        backgroundColor: COLORS.secondaryBackground,
-        color: COLORS.foreground,
-      }}
+      className="rounded-xl p-8 shadow-2xl backdrop-blur-lg bg-slate-500 text-slate-900"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-2" style={{ color: COLORS.foreground }}>
+        <h2 className="text-3xl font-bold mb-2">
           Share Files Anonymously
         </h2>
-        <p style={{ color: COLORS.foreground }}>
+        <p>
           No accounts. No tracking. Just upload and share.
         </p>
       </div>
@@ -132,10 +128,10 @@ export default function FideDropzone({ }: FileDropzoneProps) {
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
             />
           </svg>
-          <h3 className="text-xl font-semibold mb-2" style={{ color: COLORS.foreground }}>
+          <h3 className="text-xl font-semibold mb-2">
             Drag & Drop Files Here
           </h3>
-          <p className="mb-4" style={{ color: COLORS.foreground }}>
+          <p className="mb-4">
             or click to browse
           </p>
           <input
