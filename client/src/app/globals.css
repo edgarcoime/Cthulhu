@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #131515;            /* Main background */
+  --foreground: #ededed;            /* Light text foreground */
+  --secondary-background: #3A4040;  /* Secondary backgrounds (text boxes, drop zones) */
+  
+  /* Eccentric purple accent for Cthulhu theme */
+  --accent: #6B4B9A;
+  --accent-foreground: #ededed;     /* Accent text for good contrast */
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans, Arial, Helvetica, sans-serif);
+  --font-mono: var(--font-geist-mono, monospace);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-secondary-background: var(--secondary-background);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #131515;
     --foreground: #ededed;
+    --secondary-background: #3A4040;
+    --accent: #6B4B9A;
+    --accent-foreground: #ededed;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
