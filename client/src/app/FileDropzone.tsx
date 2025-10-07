@@ -6,7 +6,7 @@ import { COLORS } from "@/constants"
 type FileDropzoneProps = {
 };
 
-const API_UPLOAD_URL = "https://api.escuelajs.co/api/v1/files/upload";
+const API_UPLOAD_URL = "http://localhost:4000/upload";
 
 interface UploadFilePayload {
 }
