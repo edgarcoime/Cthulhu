@@ -1,4 +1,5 @@
 bin/
 fileDump/
 tmp/
-.log
+**.log
+.env**
