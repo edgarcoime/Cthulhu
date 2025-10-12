@@ -40,3 +40,22 @@ docker run -p 4000:4000 \
   cthulhu-gateway
 
 ```
+
+## Rabbitmq
+
+### Docker: Build and run
+
+Run the rabbitmq
+
+```bash
+cd ./rabbitmq
+docker build -t cthulhu-rabbitmq
+
+# Run
+docker run -d \
+  --name cthulhu-rabbitmq \
+  -p 5672:5672 \
+  -p 15672:15672 \
+  -p 25672:25672 \
+  cthulhu-rabbitmq
+```
