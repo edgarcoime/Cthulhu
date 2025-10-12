@@ -7,14 +7,20 @@ WORKDIR /app
 # Install git and ca-certificates (needed for go mod download)
 RUN apk add --no-cache git ca-certificates tzdata
 
+# Copy shared package first
+COPY pkg/ ./pkg/
+
 # Copy go mod and sum files
-COPY go.mod go.sum ./
+COPY gateway/go.mod gateway/go.sum ./gateway/
+
+# Change to gateway directory
+WORKDIR /app/gateway
 
 # Download dependencies
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY gateway/ .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
@@ -33,7 +39,7 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/main .
+COPY --from=builder /app/gateway/main .
 
 # Create fileDump directory with proper permissions
 RUN mkdir -p /app/fileDump && \
