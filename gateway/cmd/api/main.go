@@ -3,8 +3,11 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"cthulhu-gateway/internal/pkg"
 	"cthulhu-gateway/internal/routes"
@@ -14,6 +17,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func failOnError(err error, msg string) {
@@ -23,9 +27,17 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+
 	// Ensure fileDump directory exists
 	if err := os.MkdirAll(pkg.FILE_FOLDER, 0o755); err != nil {
 		log.Fatalf("Failed to create fileDump directory: %v", err)
+	}
+
+	// Create RabbitMQ connection
+	connRabbitMQ, err := amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s:%s/", pkg.AMPQ_USER, pkg.AMPQ_PASS, pkg.AMPQ_HOST, pkg.AMPQ_PORT))
+	if err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 
 	app := fiber.New()
