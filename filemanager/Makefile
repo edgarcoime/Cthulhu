@@ -9,14 +9,11 @@ dev:
 	@export PATH="$$(go env GOPATH)/bin:$$PATH" && air
 
 build:
-	@mkdir -p tmp
-	go build -o tmp/filemanager ./cmd
+	@mkdir -p tmp/bin
+	go build -o tmp/bin/filemanager ./cmd/filemanager
 
 run:
-	go run ./cmd
-
-test:
-	go test ./...
+	go run ./cmd/filemanager
 
 lint:
 	golangci-lint run
@@ -24,7 +21,7 @@ lint:
 stop:
 	@echo "Stopping filemanager development server..."
 	@pkill -f "air" || true
-	@pkill -f "filemanager" || true
+	@pkill -f "tmp/bin/filemanager" || true
 
 clean:
 	rm -rf tmp/

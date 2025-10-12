@@ -9,9 +9,8 @@ dev:
 	@export PATH="$$(go env GOPATH)/bin:$$PATH" && air
 
 build:
-	@mkdir -p tmp
-	@mkdir -p bin
-	go build -o bin/api ./cmd/api
+	@mkdir -p tmp/bin
+	go build -o tmp/bin/api ./cmd/api
 
 run:
 	go run ./cmd/api
@@ -22,7 +21,7 @@ lint:
 stop:
 	@echo "Stopping gateway development server..."
 	@pkill -f "air" || true
-	@pkill -f "bin/api" || true
+	@pkill -f "tmp/bin/api" || true
 
 clean:
-	rm -rf tmp/ bin/
+	rm -rf tmp/

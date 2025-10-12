@@ -7,19 +7,19 @@ dev: setup-env
 	@echo "Note: Make sure RabbitMQ is running first!"
 	@echo "Press Ctrl+C to stop all services"
 	@echo "----------------------------------------"
-	@mkdir -p gateway/tmp filemanager/tmp
-	@echo "Starting gateway..." > gateway/tmp/gateway.log
-	@echo "Starting filemanager..." > filemanager/tmp/filemanager.log
-	@echo "Starting client..." > client/tmp/client.log
-	@$(MAKE) -C gateway dev >> gateway/tmp/gateway.log 2>&1 &
+	@mkdir -p gateway/tmp/logs filemanager/tmp/logs client/tmp/logs
+	@echo "Starting gateway..." > gateway/tmp/logs/gateway.log
+	@echo "Starting filemanager..." > filemanager/tmp/logs/filemanager.log
+	@echo "Starting client..." > client/tmp/logs/client.log
+	@$(MAKE) -C gateway dev >> gateway/tmp/logs/gateway.log 2>&1 &
 	@sleep 2
-	@$(MAKE) -C filemanager dev >> filemanager/tmp/filemanager.log 2>&1 &
+	@$(MAKE) -C filemanager dev >> filemanager/tmp/logs/filemanager.log 2>&1 &
 	@sleep 2
-	@$(MAKE) -C client dev >> client/tmp/client.log 2>&1 &
+	@$(MAKE) -C client dev >> client/tmp/logs/client.log 2>&1 &
 	@sleep 2
 	@echo "All services started. Showing combined logs:"
 	@echo "----------------------------------------"
-	@tail -f gateway/tmp/gateway.log filemanager/tmp/filemanager.log client/tmp/client.log
+	@tail -f gateway/tmp/logs/gateway.log filemanager/tmp/logs/filemanager.log client/tmp/logs/client.log
 
 # Start client development server
 client.dev:
@@ -36,7 +36,7 @@ filemanager.dev:
 # Show combined logs
 logs:
 	@echo "Combined logs:"
-	@tail -f gateway/tmp/gateway.log filemanager/tmp/filemanager.log client/tmp/client.log
+	@tail -f gateway/tmp/logs/gateway.log filemanager/tmp/logs/filemanager.log client/tmp/logs/client.log
 
 # Stop all services
 stop:

@@ -1,4 +1,5 @@
 resources/
 tmp/
+bin/
 .DS_**
 .env**
