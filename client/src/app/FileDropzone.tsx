@@ -27,7 +27,7 @@ async function uploadFiles(
   files: FileList,
 ): Promise<UploadFileResponse> {
   const formData = new FormData();
-  
+
   // Append all files to the form data
   for (let i = 0; i < files.length; i++) {
     formData.append('file', files[i]);
@@ -39,7 +39,7 @@ async function uploadFiles(
   });
 
   const data = await res.json();
-  
+
   // Check if the API response indicates an error
   if (!res.ok || !data.status) {
     console.log("API error:", res.status, res.statusText);
@@ -79,38 +79,38 @@ export default function FileDropzone(_props: FileDropzoneProps) {
 
   const handleFileUpload = async (files: FileList) => {
     if (files.length === 0) return;
-    
+
     setIsUploading(true);
     setUploadProgress(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`);
-    
+
     try {
       const res = await uploadFiles(files);
       console.log("Upload Successful:", res);
-      
+
       // Store uploaded files for display
       const fileArray = Array.from(files);
       setUploadedFiles(prev => [...prev, ...fileArray]);
-      
+
       // Show success message with link - access data from the new response structure
       if (res.data) {
-        setUploadProgress(`✅ Upload successful! Access your files at: /files/s/${res.data.url}`);
+        setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.data.url}`);
       }
-      
+
       // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       // Reset after 5 seconds
       setTimeout(() => {
         setUploadProgress('');
         setUploadedFiles([]);
       }, 5000);
-      
+
     } catch (error) {
       console.error("Upload error:", error);
       setUploadProgress(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       // Reset after 3 seconds
       setTimeout(() => {
         setUploadProgress('');
@@ -218,7 +218,7 @@ export default function FileDropzone(_props: FileDropzoneProps) {
           </button>
         </div>
       </div>
-      
+
       {/* Recently uploaded files */}
       {uploadedFiles.length > 0 && (
         <div className="mt-6">
