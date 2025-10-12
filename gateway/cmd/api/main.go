@@ -15,7 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-var FILE_FOLDER = getEnv("FILE_FOLDER", "/app/fileDump")
+var FILE_FOLDER = getEnv("FILE_FOLDER", "./app/fileDump")
 
 // getEnv gets an environment variable with a fallback default value
 func getEnv(key, defaultValue string) string {
@@ -31,8 +31,6 @@ func generateRandomURL() string {
 	const length = 10
 
 	// Seed the random number generator
-	rand.Seed(time.Now().UnixNano())
-
 	for {
 		url := make([]byte, length)
 		for i := range url {
