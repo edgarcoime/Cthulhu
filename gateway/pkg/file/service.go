@@ -1,10 +1,14 @@
 package file
 
-import "cthulhu-shared/rabbitmq"
+import (
+	"context"
+	"cthulhu-shared/rabbitmq"
+)
 
 type Service interface {
 	// Add methods that require RabbitMQ functionality
 	PublishFileEvent(eventType string, data []byte) error
+	SendTestMessage(ctx context.Context, message []byte) error
 }
 
 type service struct {
@@ -21,5 +25,11 @@ func NewService(rabbitMQ *rabbitmq.Manager) Service {
 // PublishFileEvent publishes a file-related event to RabbitMQ
 func (s *service) PublishFileEvent(eventType string, data []byte) error {
 	// Example implementation - you can customize this based on your needs
-	return s.rabbitMQ.PublishMessage(nil, "", "file.events", data)
+	return s.rabbitMQ.PublishMessage(context.TODO(), "", "file.events", data)
+}
+
+// SendTestMessage sends a test message to the filemanager service
+func (s *service) SendTestMessage(ctx context.Context, message []byte) error {
+	// Send message to filemanager test queue
+	return s.rabbitMQ.PublishMessage(ctx, "", "filemanager.test", message)
 }

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -224,5 +226,45 @@ func FileDownload(service file.Service) fiber.Handler {
 
 		// Send the file
 		return c.SendFile(filePath)
+	}
+}
+
+// TestRabbitMQ demonstrates interop between gateway and filemanager via RabbitMQ
+func TestRabbitMQ(service file.Service) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Create a test message
+		testMessage := map[string]interface{}{
+			"message":    "Hello from Gateway!",
+			"timestamp":  time.Now().Unix(),
+			"request_id": fmt.Sprintf("req_%d", time.Now().UnixNano()),
+		}
+
+		// Convert to JSON
+		messageBytes, err := json.Marshal(testMessage)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": "Failed to marshal test message",
+			})
+		}
+
+		// Send message to filemanager queue
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		err = service.SendTestMessage(ctx, messageBytes)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to send message to filemanager: %v", err),
+			})
+		}
+
+		// Wait for response (this would typically be handled asynchronously)
+		// For demo purposes, we'll simulate waiting and return success
+		return c.JSON(fiber.Map{
+			"status":    "success",
+			"message":   "Test message sent to filemanager successfully",
+			"sent_at":   time.Now().Format(time.RFC3339),
+			"test_data": testMessage,
+		})
 	}
 }

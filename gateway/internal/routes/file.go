@@ -11,6 +11,7 @@ func FileRouter(app fiber.Router, service file.Service) {
 	app.Post("/files/upload", handlers.UploadFile(service))
 	app.Get("/files/s/:id", handlers.FileAccess(service))
 	app.Get("/files/s/:id/d/:filename", handlers.FileDownload(service))
+	app.Get("/test/rabbitmq", handlers.TestRabbitMQ(service))
 }
 
 /*
