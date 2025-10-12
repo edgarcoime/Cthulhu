@@ -1,6 +1,6 @@
 package file
 
-import "cthulhu-gateway/internal/pkg"
+import "cthulhu-shared/rabbitmq"
 
 type Service interface {
 	// Add methods that require RabbitMQ functionality
@@ -8,11 +8,11 @@ type Service interface {
 }
 
 type service struct {
-	rabbitMQ *pkg.RabbitMQManager
+	rabbitMQ *rabbitmq.Manager
 }
 
 // NewService creates a new file service with RabbitMQ dependency
-func NewService(rabbitMQ *pkg.RabbitMQManager) Service {
+func NewService(rabbitMQ *rabbitmq.Manager) Service {
 	return &service{
 		rabbitMQ: rabbitMQ,
 	}

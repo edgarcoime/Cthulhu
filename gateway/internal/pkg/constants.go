@@ -1,5 +1,7 @@
 package pkg
 
+import "cthulhu-shared/rabbitmq"
+
 var (
 	FILE_FOLDER = GetEnv("FILE_FOLDER", "./app/fileDump")
 	PORT        = GetEnv("PORT", "4000")
@@ -14,8 +16,8 @@ var (
 )
 
 // GetRabbitMQConfig returns RabbitMQ configuration
-func GetRabbitMQConfig() RabbitMQConfig {
-	return RabbitMQConfig{
+func GetRabbitMQConfig() rabbitmq.Config {
+	return rabbitmq.Config{
 		User:     AMPQ_USER,
 		Password: AMPQ_PASS,
 		Host:     AMPQ_HOST,

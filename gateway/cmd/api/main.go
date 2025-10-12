@@ -13,6 +13,7 @@ import (
 	"cthulhu-gateway/internal/pkg"
 	"cthulhu-gateway/internal/routes"
 	"cthulhu-gateway/pkg/file"
+	"cthulhu-shared/rabbitmq"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -30,7 +31,7 @@ func main() {
 	}
 
 	// Initialize RabbitMQ manager
-	rabbitMQManager := pkg.NewRabbitMQManager(pkg.GetRabbitMQConfig())
+	rabbitMQManager := rabbitmq.NewManager(pkg.GetRabbitMQConfig())
 
 	// Connect to RabbitMQ
 	if err := rabbitMQManager.Connect(ctx); err != nil {
