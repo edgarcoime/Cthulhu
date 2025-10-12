@@ -10,7 +10,8 @@ dev:
 
 build:
 	@mkdir -p tmp
-	go build -o tmp/gateway ./cmd/api
+	@mkdir -p bin
+	go build -o bin/api ./cmd/api
 
 run:
 	go run ./cmd/api
@@ -24,4 +25,4 @@ stop:
 	@pkill -f "bin/api" || true
 
 clean:
-	rm -rf tmp/
+	rm -rf tmp/ bin/
