@@ -9,17 +9,19 @@ const API_UPLOAD_URL = "http://localhost:4000/upload";
 
 
 interface UploadFileResponse {
-  message: string;
-  url: string;
-  session_id: string;
-  files: Array<{
-    original_name: string;
-    filename: string;
-    size: number;
-    path: string;
-  }>;
-  file_count: number;
-  total_size: number;
+  status: boolean;
+  data: {
+    url: string;
+    files: Array<{
+      original_name: string;
+      file_name: string;
+      size: number;
+      path: string;
+    }>;
+    total_size: number;
+    file_count: number;
+  } | null;
+  error: string | null;
 }
 
 async function uploadFiles(
@@ -37,12 +39,14 @@ async function uploadFiles(
     body: formData,
   });
 
-  if (!res.ok) {
+  const data = await res.json();
+  
+  // Check if the API response indicates an error
+  if (!res.ok || !data.status) {
     console.log("API error:", res.status, res.statusText);
-    throw new Error(`Upload failed: ${res.statusText}`)
+    throw new Error(data.error || `Upload failed: ${res.statusText}`);
   }
 
-  const data = await res.json()
   return data;
 }
 
@@ -88,8 +92,10 @@ export default function FileDropzone(_props: FileDropzoneProps) {
       const fileArray = Array.from(files);
       setUploadedFiles(prev => [...prev, ...fileArray]);
       
-      // Show success message with link
-      setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.url}`);
+      // Show success message with link - access data from the new response structure
+      if (res.data) {
+        setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.data.url}`);
+      }
       
       // Clear the file input
       if (fileInputRef.current) {

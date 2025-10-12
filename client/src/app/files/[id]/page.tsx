@@ -6,14 +6,19 @@ import { COLORS } from "@/constants";
 
 interface FileInfo {
   name: string;
+  filename: string;
   size: number;
   url: string;
 }
 
 interface FileResponse {
-  session_id: string;
-  files: FileInfo[];
-  count: number;
+  status: boolean;
+  data: {
+    session_id: string;
+    files: FileInfo[];
+    count: number;
+  } | null;
+  error: string | null;
 }
 
 const API_BASE_URL = "http://localhost:4000";
@@ -32,14 +37,17 @@ export default function FileAccessPage() {
         setError(null);
         
         const response = await fetch(`${API_BASE_URL}/files/${id}`);
+        const data: FileResponse = await response.json();
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch files');
+        // Check if the API response indicates an error
+        if (!response.ok || !data.status) {
+          throw new Error(data.error || 'Failed to fetch files');
         }
         
-        const data: FileResponse = await response.json();
-        setFiles(data.files);
+        // Extract files from the new response structure
+        if (data.data) {
+          setFiles(data.data.files);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
