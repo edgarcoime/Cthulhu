@@ -1,65 +1,39 @@
+// Project naming conventions
+// https://github.com/golang-standards/project-layout
 package main
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
+
+	"cthulhu-gateway/internal/pkg"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-var FILE_FOLDER = getEnv("FILE_FOLDER", "./app/fileDump")
-
-// getEnv gets an environment variable with a fallback default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// generateRandomURL generates a unique random 10-character URL string (lowercase only)
-func generateRandomURL() string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	const length = 10
-
-	// Seed the random number generator
-	for {
-		url := make([]byte, length)
-		for i := range url {
-			url[i] = charset[rand.Intn(len(charset))]
-		}
-
-		urlString := string(url)
-
-		// Check if the generated URL already exists as a folder
-		urlPath := filepath.Join(FILE_FOLDER, urlString)
-		if _, err := os.Stat(urlPath); os.IsNotExist(err) {
-			// Folder doesn't exist, this URL is unique
-			return urlString
-		}
-
-		// Folder exists, generate another URL
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Panicf("%s: %s", msg, err)
 	}
 }
 
 func main() {
 	// Ensure fileDump directory exists
-	if err := os.MkdirAll(FILE_FOLDER, 0755); err != nil {
+	if err := os.MkdirAll(pkg.FILE_FOLDER, 0o755); err != nil {
 		log.Fatalf("Failed to create fileDump directory: %v", err)
 	}
 
 	app := fiber.New()
 
+	// Add Cors
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		AllowOrigins: pkg.CORS_ORIGIN,
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
@@ -71,6 +45,7 @@ func main() {
 		TimeFormat: "2006-01-02 15:04:05",
 		TimeZone:   "UTC",
 	}))
+	app.Use(recover.New())
 
 	// Routes
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -81,99 +56,9 @@ func main() {
 	app.Get("/files/:id", handleFileAccess)
 	app.Get("/files/:id/download/:filename", handleFileDownload)
 
-	port := getEnv("PORT", "4000")
-	if err := app.Listen(":" + port); err != nil {
+	if err := app.Listen(":" + pkg.PORT); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
-}
-
-func handleFileUpload(c *fiber.Ctx) error {
-	// Parse the multipart form
-	form, err := c.MultipartForm()
-	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Failed to parse multipart form",
-		})
-	}
-
-	// Get the files from the form
-	files := form.File["file"]
-	if len(files) == 0 {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "No files provided",
-		})
-	}
-
-	// Generate a random URL string for this upload session
-	urlString := generateRandomURL()
-
-	// Create a folder for this upload session
-	sessionFolder := filepath.Join(FILE_FOLDER, urlString)
-	if err := os.MkdirAll(sessionFolder, 0755); err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to create session folder",
-		})
-	}
-
-	// Process all uploaded files
-	var uploadedFiles []fiber.Map
-	var totalSize int64
-	timestamp := time.Now().Format("20060102_150405")
-
-	for i, file := range files {
-		// Generate a unique filename with timestamp and index
-		// Keep the original filename but add timestamp and index prefix
-		filename := fmt.Sprintf("%s_%d_%s", timestamp, i+1, file.Filename)
-		filePath := filepath.Join(sessionFolder, filename)
-
-		// Open the uploaded file
-		src, err := file.Open()
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to open file %s", file.Filename),
-			})
-		}
-
-		// Create the destination file
-		dst, err := os.Create(filePath)
-		if err != nil {
-			src.Close()
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to create destination file for %s", file.Filename),
-			})
-		}
-
-		// Copy the file content
-		_, err = io.Copy(dst, src)
-		src.Close()
-		dst.Close()
-
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to save file %s", file.Filename),
-			})
-		}
-
-		// Add file info to the response
-		uploadedFiles = append(uploadedFiles, fiber.Map{
-			"original_name": file.Filename,
-			"filename":      filename,
-			"size":          file.Size,
-			"path":          filePath,
-		})
-
-		totalSize += file.Size
-	}
-
-	// Return success response
-	return c.JSON(fiber.Map{
-		"message":    "Files uploaded successfully",
-		"url":        urlString,
-		"session_id": urlString,
-		"files":      uploadedFiles,
-		"file_count": len(uploadedFiles),
-		"total_size": totalSize,
-	})
 }
 
 func handleFileAccess(c *fiber.Ctx) error {
