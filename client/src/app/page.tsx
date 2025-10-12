@@ -1,6 +1,5 @@
 "use server";
 
-import Link from "next/link";
 import FileDropzone from "./FileDropzone"
 
 export default async function Home() {

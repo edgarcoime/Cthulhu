@@ -3,13 +3,10 @@
 import React, { useState, useRef } from 'react';
 import { COLORS } from "@/constants"
 
-type FileDropzoneProps = {
-};
+type FileDropzoneProps = Record<string, never>;
 
 const API_UPLOAD_URL = "http://localhost:4000/upload";
 
-interface UploadFilePayload {
-}
 
 interface UploadFileResponse {
   message: string;
@@ -49,7 +46,7 @@ async function uploadFiles(
   return data;
 }
 
-export default function FideDropzone({ }: FileDropzoneProps) {
+export default function FileDropzone(_props: FileDropzoneProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
