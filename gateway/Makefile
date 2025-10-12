@@ -9,10 +9,11 @@ dev:
 	@export PATH="$$(go env GOPATH)/bin:$$PATH" && air
 
 build:
-	go build -o gateway
+	@mkdir -p tmp
+	go build -o tmp/gateway ./cmd/api
 
 run:
-	go run main.go
+	go run ./cmd/api
 
 lint:
 	golangci-lint run
@@ -23,4 +24,4 @@ stop:
 	@pkill -f "bin/api" || true
 
 clean:
-	rm -f gateway bin/api
+	rm -rf tmp/

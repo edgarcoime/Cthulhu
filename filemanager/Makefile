@@ -9,7 +9,8 @@ dev:
 	@export PATH="$$(go env GOPATH)/bin:$$PATH" && air
 
 build:
-	go build -o filemanager ./cmd
+	@mkdir -p tmp
+	go build -o tmp/filemanager ./cmd
 
 run:
 	go run ./cmd
@@ -26,4 +27,4 @@ stop:
 	@pkill -f "filemanager" || true
 
 clean:
-	rm -f filemanager
+	rm -rf tmp/
