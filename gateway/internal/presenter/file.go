@@ -11,6 +11,13 @@ type File struct {
 	Path         string `json:"path"`
 }
 
+type FileInfo struct {
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
+	URL      string `json:"url"`
+}
+
 func FileUploadSuccessResponse(url string, totalSize int, files *[]File) *fiber.Map {
 	return &fiber.Map{
 		"status": true,
@@ -29,6 +36,34 @@ func FileUploadErrorResponse(err error) *fiber.Map {
 		"status": false,
 		"data":   nil,
 		"error":  err,
+	}
+}
+
+func FileAccessSuccessResponse(sessionID string, files *[]FileInfo) *fiber.Map {
+	return &fiber.Map{
+		"status": true,
+		"data": fiber.Map{
+			"session_id": sessionID,
+			"files":      files,
+			"count":      len(*files),
+		},
+		"error": nil,
+	}
+}
+
+func FileAccessErrorResponse(message string) *fiber.Map {
+	return &fiber.Map{
+		"status": false,
+		"data":   nil,
+		"error":  message,
+	}
+}
+
+func FileDownloadErrorResponse(message string) *fiber.Map {
+	return &fiber.Map{
+		"status": false,
+		"data":   nil,
+		"error":  message,
 	}
 }
 
