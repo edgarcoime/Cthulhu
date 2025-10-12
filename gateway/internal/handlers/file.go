@@ -172,7 +172,7 @@ func FileAccess(service file.Service) fiber.Handler {
 					Name:     originalName,
 					Filename: file.Name(), // Keep the actual stored filename for download
 					Size:     fileInfo.Size(),
-					URL:      fmt.Sprintf("/files/%s/download/%s", id, file.Name()),
+					URL:      fmt.Sprintf("/files/s/%s/d/%s", id, file.Name()),
 				})
 			}
 		}

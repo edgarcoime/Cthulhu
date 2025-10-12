@@ -8,7 +8,16 @@ import (
 )
 
 func FileRouter(app fiber.Router, service file.Service) {
-	app.Post("/upload", handlers.UploadFile(service))
-	app.Get("/files/:id", handlers.FileAccess(service))
-	app.Get("/files/:id/download/:filename", handlers.FileDownload(service))
+	app.Post("/files/upload", handlers.UploadFile(service))
+	app.Get("/files/s/:id", handlers.FileAccess(service))
+	app.Get("/files/s/:id/d/:filename", handlers.FileDownload(service))
 }
+
+/*
+POST   /files/upload
+GET    /files/s/:id
+GET    /files/s/:id/d/:filename
+GET    /files/s/:id/m - Access metadata, folder browse
+DELETE /files/s/:id - Remove upload session
+
+*/

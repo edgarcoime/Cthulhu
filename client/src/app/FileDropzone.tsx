@@ -2,10 +2,9 @@
 
 import React, { useState, useRef } from 'react';
 import { COLORS } from "@/constants"
+import { API_ENDPOINTS } from "@/constants/api"
 
 type FileDropzoneProps = Record<string, never>;
-
-const API_UPLOAD_URL = "http://localhost:4000/upload";
 
 
 interface UploadFileResponse {
@@ -34,7 +33,7 @@ async function uploadFiles(
     formData.append('file', files[i]);
   }
 
-  const res = await fetch(API_UPLOAD_URL, {
+  const res = await fetch(API_ENDPOINTS.UPLOAD, {
     method: "POST",
     body: formData,
   });
@@ -94,7 +93,7 @@ export default function FileDropzone(_props: FileDropzoneProps) {
       
       // Show success message with link - access data from the new response structure
       if (res.data) {
-        setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.data.url}`);
+        setUploadProgress(`✅ Upload successful! Access your files at: /files/s/${res.data.url}`);
       }
       
       // Clear the file input

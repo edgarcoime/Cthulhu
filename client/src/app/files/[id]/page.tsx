@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { COLORS } from "@/constants";
+import { API_ENDPOINTS } from "@/constants/api";
 
 interface FileInfo {
   name: string;
@@ -21,8 +22,6 @@ interface FileResponse {
   error: string | null;
 }
 
-const API_BASE_URL = "http://localhost:4000";
-
 export default function FileAccessPage() {
   const params = useParams();
   const id = params.id as string;
@@ -36,7 +35,7 @@ export default function FileAccessPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${API_BASE_URL}/files/${id}`);
+        const response = await fetch(API_ENDPOINTS.FILE_ACCESS(id));
         const data: FileResponse = await response.json();
         
         // Check if the API response indicates an error
@@ -69,7 +68,7 @@ export default function FileAccessPage() {
   };
 
   const handleDownload = (file: FileInfo) => {
-    window.open(`${API_BASE_URL}${file.url}`, '_blank');
+    window.open(API_ENDPOINTS.FILE_DOWNLOAD(id, file.filename), '_blank');
   };
 
   if (loading) {
