@@ -11,19 +11,19 @@ RUN apk add --no-cache git ca-certificates tzdata
 COPY pkg/ ./pkg/
 
 # Copy go mod and sum files
-COPY gateway/go.mod gateway/go.sum ./gateway/
+COPY filemanager/go.mod filemanager/go.sum ./filemanager/
 
-# Change to gateway directory
-WORKDIR /app/gateway
+# Change to filemanager directory
+WORKDIR /app/filemanager
 
 # Download dependencies
 RUN go mod download
 
 # Copy source code
-COPY gateway/ .
+COPY filemanager/ .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd
 
 # Final stage
 FROM alpine:latest
@@ -39,9 +39,9 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/gateway/main .
+COPY --from=builder /app/filemanager/main .
 
-# Create fileDump directory with proper permissions
+# Create app directory with proper permissions
 RUN mkdir -p /app/fileDump && \
     chown -R appuser:appgroup /app
 
@@ -50,16 +50,16 @@ USER appuser
 
 # Set dummy environment variables
 ENV FILE_FOLDER=/app/fileDump
-ENV PORT=4000
+ENV PORT=5000
 ENV CORS_ORIGIN=http://localhost:3000
 ENV LOG_LEVEL=info
 
 # Expose port
-EXPOSE 4000
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 # Run the application
 CMD ["./main"]

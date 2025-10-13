@@ -1,21 +1,25 @@
-.PHONY: dev client gateway stop clean setup-env help
+.PHONY: dev client gateway filemanager stop clean setup-env help
 
-# Default development target - runs client and gateway locally
+# Default development target - runs all services locally
 dev: setup-env
-	@echo "Starting development environment..."
-	@echo "Starting both client and gateway with combined logs..."
-	@echo "Press Ctrl+C to stop both services"
+	@echo "Starting complete development environment..."
+	@echo "Starting Gateway, Filemanager, and Client..."
+	@echo "Note: Make sure RabbitMQ is running first!"
+	@echo "Press Ctrl+C to stop all services"
 	@echo "----------------------------------------"
-	@mkdir -p tmp
-	@echo "Starting gateway..." > tmp/gateway.log
-	@echo "Starting client..." > tmp/client.log
-	@$(MAKE) -C gateway dev >> tmp/gateway.log 2>&1 &
-	@sleep 3
-	@$(MAKE) -C client dev >> tmp/client.log 2>&1 &
+	@mkdir -p gateway/tmp/logs filemanager/tmp/logs client/tmp/logs
+	@echo "Starting gateway..." > gateway/tmp/logs/gateway.log
+	@echo "Starting filemanager..." > filemanager/tmp/logs/filemanager.log
+	@echo "Starting client..." > client/tmp/logs/client.log
+	@$(MAKE) -C gateway dev >> gateway/tmp/logs/gateway.log 2>&1 &
 	@sleep 2
-	@echo "Both services started. Showing combined logs:"
+	@$(MAKE) -C filemanager dev >> filemanager/tmp/logs/filemanager.log 2>&1 &
+	@sleep 2
+	@$(MAKE) -C client dev >> client/tmp/logs/client.log 2>&1 &
+	@sleep 2
+	@echo "All services started. Showing combined logs:"
 	@echo "----------------------------------------"
-	@tail -f tmp/gateway.log tmp/client.log
+	@tail -f gateway/tmp/logs/gateway.log filemanager/tmp/logs/filemanager.log client/tmp/logs/client.log
 
 # Start client development server
 client.dev:
@@ -25,23 +29,29 @@ client.dev:
 gateway.dev:
 	$(MAKE) -C gateway dev
 
+# Start filemanager development server
+filemanager.dev:
+	$(MAKE) -C filemanager dev
+
 # Show combined logs
 logs:
 	@echo "Combined logs:"
-	@tail -f tmp/gateway.log tmp/client.log
+	@tail -f gateway/tmp/logs/gateway.log filemanager/tmp/logs/filemanager.log client/tmp/logs/client.log
 
 # Stop all services
 stop:
 	$(MAKE) -C client stop 2>/dev/null || true
 	$(MAKE) -C gateway stop 2>/dev/null || true
+	$(MAKE) -C filemanager stop 2>/dev/null || true
 	@pkill -f "air" 2>/dev/null || true
 	@pkill -f "next dev" 2>/dev/null || true
-	@rm -rf tmp/
+	@rm -rf gateway/tmp/ filemanager/tmp/
 
 # Clean up everything
 clean: stop
 	$(MAKE) -C client clean
 	$(MAKE) -C gateway clean
+	$(MAKE) -C filemanager clean
 
 # Setup environment files
 setup-env:
@@ -54,15 +64,28 @@ setup-env:
 		cp gateway/env.example gateway/.env; \
 		echo "Created gateway/.env from env.example"; \
 	fi
+	@if [ ! -f filemanager/.env ]; then \
+		cp filemanager/env.example filemanager/.env; \
+		echo "Created filemanager/.env from env.example"; \
+	fi
 
 # Show help
 help:
 	@echo "Available commands:"
-	@echo "  dev        - Start development environment with combined logs"
-	@echo "  client.dev - Start client development server"
-	@echo "  gateway.dev- Start gateway development server"
-	@echo "  logs       - Show combined logs from both services"
-	@echo "  stop       - Stop all services"
-	@echo "  clean      - Clean up build artifacts"
-	@echo "  setup-env  - Copy environment files from examples"
-	@echo "  help       - Show this help message"
+	@echo "  dev           - Start development environment (Gateway + Filemanager + Client)"
+	@echo "  client.dev    - Start client development server only"
+	@echo "  gateway.dev   - Start gateway development server only"
+	@echo "  filemanager.dev - Start filemanager development server only"
+	@echo "  logs          - Show combined logs from all services"
+	@echo "  stop          - Stop all services"
+	@echo "  clean         - Clean up build artifacts"
+	@echo "  setup-env     - Copy environment files from examples"
+	@echo "  help          - Show this help message"
+	@echo ""
+	@echo "Service URLs:"
+	@echo "  Client:        http://localhost:3000"
+	@echo "  Gateway API:   http://localhost:4000"
+	@echo "  Filemanager:   http://localhost:5000"
+	@echo ""
+	@echo "Note: Start RabbitMQ manually before running 'make dev':"
+	@echo "  cd rabbitmq && docker build -t cthulhu-rabbitmq . && docker run -d --name cthulhu-rabbitmq -p 5672:5672 -p 15672:15672 cthulhu-rabbitmq"

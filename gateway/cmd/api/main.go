@@ -1,65 +1,65 @@
+// Project naming conventions
+// https://github.com/golang-standards/project-layout
 package main
 
 import (
-	"fmt"
-	"io"
+	"context"
+	"encoding/json"
 	"log"
-	"math/rand"
 	"os"
-	"path/filepath"
-	"strings"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"cthulhu-gateway/internal/pkg"
+	"cthulhu-gateway/internal/routes"
+	"cthulhu-gateway/pkg/file"
+	"cthulhu-shared/rabbitmq"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-var FILE_FOLDER = getEnv("FILE_FOLDER", "./app/fileDump")
-
-// getEnv gets an environment variable with a fallback default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// generateRandomURL generates a unique random 10-character URL string (lowercase only)
-func generateRandomURL() string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	const length = 10
-
-	// Seed the random number generator
-	for {
-		url := make([]byte, length)
-		for i := range url {
-			url[i] = charset[rand.Intn(len(charset))]
-		}
-
-		urlString := string(url)
-
-		// Check if the generated URL already exists as a folder
-		urlPath := filepath.Join(FILE_FOLDER, urlString)
-		if _, err := os.Stat(urlPath); os.IsNotExist(err) {
-			// Folder doesn't exist, this URL is unique
-			return urlString
-		}
-
-		// Folder exists, generate another URL
-	}
-}
-
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Ensure fileDump directory exists
-	if err := os.MkdirAll(FILE_FOLDER, 0755); err != nil {
+	if err := os.MkdirAll(pkg.FILE_FOLDER, 0o755); err != nil {
 		log.Fatalf("Failed to create fileDump directory: %v", err)
 	}
 
+	// Initialize RabbitMQ manager
+	rabbitMQManager := rabbitmq.NewManager(pkg.GetRabbitMQConfig())
+
+	// Connect to RabbitMQ
+	if err := rabbitMQManager.Connect(ctx); err != nil {
+		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
+	}
+	defer rabbitMQManager.Close()
+
+	// Start heartbeat monitoring
+	rabbitMQManager.StartHeartbeat(ctx)
+
+	// Declare response queue for receiving responses from filemanager
+	responseQueue, err := rabbitMQManager.DeclareQueue("gateway.responses", true, false, false, false)
+	if err != nil {
+		log.Printf("Failed to declare response queue: %v", err)
+	} else {
+		log.Printf("Declared response queue: %s", responseQueue.Name)
+	}
+
+	// Start consuming responses from filemanager
+	go startResponseConsumer(ctx, rabbitMQManager, responseQueue.Name)
+
 	app := fiber.New()
 
+	// Add Cors
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		AllowOrigins: pkg.CORS_ORIGIN,
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
@@ -71,235 +71,104 @@ func main() {
 		TimeFormat: "2006-01-02 15:04:05",
 		TimeZone:   "UTC",
 	}))
+	app.Use(recover.New())
+
+	// Initialize service with RabbitMQ dependency
+	fileService := file.NewService(rabbitMQManager)
 
 	// Routes
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, world")
 	})
 
-	app.Post("/upload", handleFileUpload)
-	app.Get("/files/:id", handleFileAccess)
-	app.Get("/files/:id/download/:filename", handleFileDownload)
+	// File routes
+	routes.FileRouter(app, fileService)
 
-	port := getEnv("PORT", "4000")
-	if err := app.Listen(":" + port); err != nil {
+	// Graceful shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		log.Println("Shutting down gracefully...")
+		app.Shutdown()
+	}()
+
+	if err := app.Listen(":" + pkg.PORT); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
 
-func handleFileUpload(c *fiber.Ctx) error {
-	// Parse the multipart form
-	form, err := c.MultipartForm()
+// startResponseConsumer starts consuming responses from the filemanager
+func startResponseConsumer(ctx context.Context, rabbitMQManager *rabbitmq.Manager, queueName string) {
+	channel := rabbitMQManager.GetChannel()
+	if channel == nil {
+		log.Println("No active channel available for response consumption")
+		return
+	}
+
+	// Set QoS to process one message at a time
+	err := channel.Qos(1, 0, false)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Failed to parse multipart form",
-		})
+		log.Printf("Failed to set QoS for response consumer: %v", err)
+		return
 	}
 
-	// Get the files from the form
-	files := form.File["file"]
-	if len(files) == 0 {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "No files provided",
-		})
-	}
-
-	// Generate a random URL string for this upload session
-	urlString := generateRandomURL()
-
-	// Create a folder for this upload session
-	sessionFolder := filepath.Join(FILE_FOLDER, urlString)
-	if err := os.MkdirAll(sessionFolder, 0755); err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to create session folder",
-		})
-	}
-
-	// Process all uploaded files
-	var uploadedFiles []fiber.Map
-	var totalSize int64
-	timestamp := time.Now().Format("20060102_150405")
-
-	for i, file := range files {
-		// Generate a unique filename with timestamp and index
-		// Keep the original filename but add timestamp and index prefix
-		filename := fmt.Sprintf("%s_%d_%s", timestamp, i+1, file.Filename)
-		filePath := filepath.Join(sessionFolder, filename)
-
-		// Open the uploaded file
-		src, err := file.Open()
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to open file %s", file.Filename),
-			})
-		}
-
-		// Create the destination file
-		dst, err := os.Create(filePath)
-		if err != nil {
-			src.Close()
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to create destination file for %s", file.Filename),
-			})
-		}
-
-		// Copy the file content
-		_, err = io.Copy(dst, src)
-		src.Close()
-		dst.Close()
-
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to save file %s", file.Filename),
-			})
-		}
-
-		// Add file info to the response
-		uploadedFiles = append(uploadedFiles, fiber.Map{
-			"original_name": file.Filename,
-			"filename":      filename,
-			"size":          file.Size,
-			"path":          filePath,
-		})
-
-		totalSize += file.Size
-	}
-
-	// Return success response
-	return c.JSON(fiber.Map{
-		"message":    "Files uploaded successfully",
-		"url":        urlString,
-		"session_id": urlString,
-		"files":      uploadedFiles,
-		"file_count": len(uploadedFiles),
-		"total_size": totalSize,
-	})
-}
-
-func handleFileAccess(c *fiber.Ctx) error {
-	// Get the ID from the URL parameter
-	id := c.Params("id")
-
-	// Validate the ID format (10 characters, alphanumeric lowercase only)
-	if len(id) != 10 {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid ID format. Must be exactly 10 characters.",
-		})
-	}
-
-	// Check if ID contains only valid characters
-	for _, char := range id {
-		if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')) {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Invalid ID format. Only lowercase letters and numbers are allowed.",
-			})
-		}
-	}
-
-	// Check if the session folder exists
-	sessionFolder := filepath.Join(FILE_FOLDER, id)
-	if _, err := os.Stat(sessionFolder); os.IsNotExist(err) {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Session not found. The provided ID does not exist.",
-		})
-	}
-
-	// Read all files in the session folder
-	files, err := os.ReadDir(sessionFolder)
+	// Start consuming messages
+	msgs, err := channel.Consume(
+		queueName, // queue
+		"",        // consumer
+		false,     // auto-ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,       // args
+	)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to read session files",
-		})
+		log.Printf("Failed to register response consumer: %v", err)
+		return
 	}
 
-	// If no files found
-	if len(files) == 0 {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "No files found in this session",
-		})
-	}
+	log.Printf("Started consuming responses from queue: %s", queueName)
 
-	// Prepare file information
-	var fileList []fiber.Map
-	for _, file := range files {
-		if !file.IsDir() {
-			filePath := filepath.Join(sessionFolder, file.Name())
-			fileInfo, err := os.Stat(filePath)
-			if err != nil {
-				continue // Skip files that can't be read
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Response consumer context cancelled, stopping...")
+			return
+		case msg, ok := <-msgs:
+			if !ok {
+				log.Println("Response channel closed, stopping consumer...")
+				return
 			}
 
-			// Extract original filename by removing timestamp and index prefix
-			originalName := file.Name()
-			// Remove timestamp_XX_ prefix to get original filename
-			if parts := strings.SplitN(file.Name(), "_", 3); len(parts) >= 3 {
-				originalName = parts[2] // Get everything after timestamp_XX_
-			}
-
-			fileList = append(fileList, fiber.Map{
-				"name":     originalName,
-				"filename": file.Name(), // Keep the actual stored filename for download
-				"size":     fileInfo.Size(),
-				"url":      fmt.Sprintf("/files/%s/download/%s", id, file.Name()),
-			})
+			// Process the response
+			go processResponse(msg)
 		}
 	}
-
-	// Return the file list
-	return c.JSON(fiber.Map{
-		"session_id": id,
-		"files":      fileList,
-		"count":      len(fileList),
-	})
 }
 
-func handleFileDownload(c *fiber.Ctx) error {
-	// Get the ID and filename from URL parameters
-	id := c.Params("id")
-	filename := c.Params("filename")
+// processResponse processes a response from the filemanager
+func processResponse(msg amqp.Delivery) {
+	defer msg.Ack(false) // Acknowledge the message
 
-	// Validate the ID format (same validation as handleFileAccess)
-	if len(id) != 10 {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid ID format. Must be exactly 10 characters.",
-		})
+	log.Printf("Received response from filemanager: %s", string(msg.Body))
+
+	// Parse the response
+	var response map[string]interface{}
+	if err := json.Unmarshal(msg.Body, &response); err != nil {
+		log.Printf("Failed to parse response: %v", err)
+		return
 	}
 
-	for _, char := range id {
-		if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')) {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Invalid ID format. Only lowercase letters and numbers are allowed.",
-			})
-		}
+	// Log the response details
+	if status, ok := response["status"].(string); ok {
+		log.Printf("Filemanager response status: %s", status)
 	}
-
-	// Check if the session folder exists
-	sessionFolder := filepath.Join(FILE_FOLDER, id)
-	if _, err := os.Stat(sessionFolder); os.IsNotExist(err) {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "Session not found. The provided ID does not exist.",
-		})
+	if message, ok := response["message"].(string); ok {
+		log.Printf("Filemanager response message: %s", message)
 	}
-
-	// Construct the full file path
-	filePath := filepath.Join(sessionFolder, filename)
-
-	// Check if the file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "File not found.",
-		})
+	if processedAt, ok := response["processed_at"].(float64); ok {
+		log.Printf("Response processed at: %d", int64(processedAt))
 	}
-
-	// Extract original filename for download
-	originalName := filename
-	if parts := strings.SplitN(filename, "_", 3); len(parts) >= 3 {
-		originalName = parts[2] // Get everything after timestamp_XX_
-	}
-
-	// Set the Content-Disposition header to use the original filename
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalName))
-
-	// Send the file
-	return c.SendFile(filePath)
 }

@@ -2,47 +2,50 @@
 
 import React, { useState, useRef } from 'react';
 import { COLORS } from "@/constants"
+import { API_ENDPOINTS } from "@/constants/api"
 
 type FileDropzoneProps = Record<string, never>;
 
-const API_UPLOAD_URL = "http://localhost:4000/upload";
-
 
 interface UploadFileResponse {
-  message: string;
-  url: string;
-  session_id: string;
-  files: Array<{
-    original_name: string;
-    filename: string;
-    size: number;
-    path: string;
-  }>;
-  file_count: number;
-  total_size: number;
+  status: boolean;
+  data: {
+    url: string;
+    files: Array<{
+      original_name: string;
+      file_name: string;
+      size: number;
+      path: string;
+    }>;
+    total_size: number;
+    file_count: number;
+  } | null;
+  error: string | null;
 }
 
 async function uploadFiles(
   files: FileList,
 ): Promise<UploadFileResponse> {
   const formData = new FormData();
-  
+
   // Append all files to the form data
   for (let i = 0; i < files.length; i++) {
     formData.append('file', files[i]);
   }
 
-  const res = await fetch(API_UPLOAD_URL, {
+  const res = await fetch(API_ENDPOINTS.UPLOAD, {
     method: "POST",
     body: formData,
   });
 
-  if (!res.ok) {
+  const data = await res.json();
+
+  // Check if the API response indicates an error
+  if (!res.ok || !data.status) {
     console.log("API error:", res.status, res.statusText);
-    throw new Error(`Upload failed: ${res.statusText}`)
+    throw new Error(data.error || `Upload failed: ${res.statusText}`);
   }
 
-  const data = await res.json()
   return data;
 }
 
@@ -76,36 +79,38 @@ export default function FileDropzone(_props: FileDropzoneProps) {
 
   const handleFileUpload = async (files: FileList) => {
     if (files.length === 0) return;
-    
+
     setIsUploading(true);
     setUploadProgress(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`);
-    
+
     try {
       const res = await uploadFiles(files);
       console.log("Upload Successful:", res);
-      
+
       // Store uploaded files for display
       const fileArray = Array.from(files);
       setUploadedFiles(prev => [...prev, ...fileArray]);
-      
-      // Show success message with link
-      setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.url}`);
-      
+
+      // Show success message with link - access data from the new response structure
+      if (res.data) {
+        setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.data.url}`);
+      }
+
       // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       // Reset after 5 seconds
       setTimeout(() => {
         setUploadProgress('');
         setUploadedFiles([]);
       }, 5000);
-      
+
     } catch (error) {
       console.error("Upload error:", error);
       setUploadProgress(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+
       // Reset after 3 seconds
       setTimeout(() => {
         setUploadProgress('');
@@ -213,7 +218,7 @@ export default function FileDropzone(_props: FileDropzoneProps) {
           </button>
         </div>
       </div>
-      
+
       {/* Recently uploaded files */}
       {uploadedFiles.length > 0 && (
         <div className="mt-6">

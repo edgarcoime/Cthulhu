@@ -1,3 +1,5 @@
 resources/
-.DS_Store
-.DS_*
+tmp/
+bin/
+.DS_**
+.env**

@@ -10,18 +10,18 @@ dev:
 
 build:
 	@mkdir -p tmp/bin
-	go build -o tmp/bin/api ./cmd/api
+	go build -o tmp/bin/filemanager ./cmd/filemanager
 
 run:
-	go run ./cmd/api
+	go run ./cmd/filemanager
 
 lint:
 	golangci-lint run
 
 stop:
-	@echo "Stopping gateway development server..."
+	@echo "Stopping filemanager development server..."
 	@pkill -f "air" || true
-	@pkill -f "tmp/bin/api" || true
+	@pkill -f "tmp/bin/filemanager" || true
 
 clean:
 	rm -rf tmp/
