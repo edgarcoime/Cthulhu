@@ -1,6 +1,8 @@
 # Cthulhu
 
-## What is CTHULHU
+## What is CTHULHU?
+
+CTHULHU is an anonymous, file sharing platform that lets anyone upload up to 1 GB of files without an account and share a secure URL that expires after 48 hours. Authorized users can extend retention up to 14 days, manage and delete their uploads on demand, and optionally password-protect shared content. Built on a microservices architecture with a focus on scalability, securinty and user privacy.
 
 ## Table of contents <a name="toc"></a>
 
@@ -120,4 +122,5 @@ docker run -p 4000:4000 \
 ```
 
 ### Filemanager
+
 Work in progress not fully implemented and working with Docker yet
