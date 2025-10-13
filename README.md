@@ -2,7 +2,7 @@
 
 ## What is CTHULHU?
 
-CTHULHU is an anonymous, file sharing platform that lets anyone upload up to 1 GB of files without an account and share a secure URL that expires after 48 hours. Authorized users can extend retention up to 14 days, manage and delete their uploads on demand, and optionally password-protect shared content. Built on a microservices architecture with a focus on scalability, securinty and user privacy.
+CTHULHU is an anonymous, file sharing platform that lets anyone upload up to 1 GB of files without an account and share a secure URL that expires after 48 hours. Authorized users can extend retention up to 14 days, manage, and delete their uploads on demand, and optionally password-protect shared content. Built on a microservices architecture with a focus on scalability, security, and user privacy.
 
 ## Table of contents <a name="toc"></a>
 
@@ -71,7 +71,7 @@ Test the main resources of the application.
 
 ## Docker
 
-All services can also be ran using Docker. This allows me the flexibility to later run orchestration through docker-compose or Kubernetes. Here are some ways the services can be run through docker.
+All services can also be run using Docker. This allows me the flexibility to later run orchestration through docker-compose or Kubernetes. Here are some ways the services can be run through Docker.
 
 ### RabbitMQ
 
