@@ -21,8 +21,8 @@ CTHULHU is an anonymous, file sharing platform that lets anyone upload up to 1 G
 
 ## Prerequisites
 
-- Golang 1.25.1 - [download](https://go.dev/doc/install)
-- Node 22.22.0 - [download](https://nodejs.org/en/download)
+- Golang 1.25.3 - [download](https://go.dev/doc/install)
+- Node 23.11.0 - [download](https://nodejs.org/en/download)
 - Docker 28.4.0 (Any recent version is fine) - [download](https://docs.docker.com/engine/install/)
 - Make (Most UNIX based systems have it otherwise install using package manager)
 
