@@ -18,11 +18,12 @@ func NewContainer(ctx context.Context) *Container {
 	// Create RabbitMQ Manager
 	rmqManager := manager.NewManager(manager.Config{
 		// TODO: Change to env
-		User:     "guest",
-		Password: "guest",
-		Host:     "localhost",
-		Port:     "5672",
-		VHost:    "/",
+		User:           "guest",
+		Password:       "guest",
+		Host:           "localhost",
+		Port:           "5672",
+		VHost:          "/",
+		ConnectionName: "gateway",
 	})
 
 	// Connect to rmq

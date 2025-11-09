@@ -20,11 +20,12 @@ type Manager struct {
 
 // Config holds RabbitMQ connection configuration
 type Config struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	VHost    string
+	User           string
+	Password       string
+	Host           string
+	Port           string
+	VHost          string
+	ConnectionName string // Optional: label for the connection in RabbitMQ management console
 }
 
 // NewManager creates a new RabbitMQ manager
@@ -46,7 +47,17 @@ func (r *Manager) Connect(ctx context.Context) error {
 		r.config.Port,
 		r.config.VHost)
 
-	conn, err := amqp.Dial(url)
+	// Configure client properties for connection labeling
+	config := amqp.Config{
+		Properties: amqp.Table{},
+	}
+
+	// Set connection name if provided (visible in RabbitMQ management console)
+	if r.config.ConnectionName != "" {
+		config.Properties["connection_name"] = r.config.ConnectionName
+	}
+
+	conn, err := amqp.DialConfig(url, config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
