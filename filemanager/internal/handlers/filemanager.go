@@ -259,7 +259,17 @@ func (h *Handler) handleFileChunk(chunkRequest messages.FileChunkRequest, msg *a
 		Size:     chunkRequest.TotalSize,
 	}
 
-	result, err := h.service.PostFile(h.ctx, chunkRequest.TransactionID, fileUpload)
+	// If storageID is provided, use PostFiles to add to existing storage
+	// Otherwise, use PostFile to create new storage
+	var result *service.UploadResult
+	if metadata.storageID != "" {
+		// Add file to existing storage
+		result, err = h.service.PostFiles(h.ctx, chunkRequest.TransactionID, metadata.storageID, []service.FileUpload{fileUpload})
+	} else {
+		// Create new storage
+		result, err = h.service.PostFile(h.ctx, chunkRequest.TransactionID, fileUpload)
+	}
+
 	if err != nil {
 		return messages.FileManagerResponse{
 			TransactionID: chunkRequest.TransactionID,
@@ -305,8 +315,17 @@ func (h *Handler) handlePostFileWithContent(uploadRequest messages.FileUploadReq
 		Size:     uploadRequest.Size,
 	}
 
-	// Upload the file
-	result, err := h.service.PostFile(h.ctx, uploadRequest.TransactionID, fileUpload)
+	// If storageID is provided, use PostFiles to add to existing storage
+	// Otherwise, use PostFile to create new storage
+	var result *service.UploadResult
+	if uploadRequest.StorageID != "" {
+		// Add file to existing storage
+		result, err = h.service.PostFiles(h.ctx, uploadRequest.TransactionID, uploadRequest.StorageID, []service.FileUpload{fileUpload})
+	} else {
+		// Create new storage
+		result, err = h.service.PostFile(h.ctx, uploadRequest.TransactionID, fileUpload)
+	}
+
 	if err != nil {
 		return messages.FileManagerResponse{
 			TransactionID: uploadRequest.TransactionID,
