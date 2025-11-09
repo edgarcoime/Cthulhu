@@ -48,6 +48,13 @@ docker run -d --name cthulhu-rabbitmq \
 docker ps
 ```
 
+Can look at the admin platform at [dashboard](http://localhost:15672).
+
+The default credentials are:
+
+- username: _guest_
+- password: _guest_
+
 ### 2. Start by using root Makefile
 
 The project is setup with a combination of make files

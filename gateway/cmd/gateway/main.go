@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/edgarcoime/Cthulhu-gateway/internal/pkg"
 	"github.com/edgarcoime/Cthulhu-gateway/internal/routes"
+	"github.com/edgarcoime/Cthulhu-gateway/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -15,32 +17,43 @@ import (
 )
 
 func main() {
-	app := fiber.New()
-
-	// Add Cors
-	app.Use(cors.New(cors.Config{
+	// Start up requirements/configs
+	ctx := context.Background()
+	corsSettings := cors.New(cors.Config{
 		AllowOrigins: pkg.CORS_ORIGIN,
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-	}))
-
-	// Middleware
-	app.Use(logger.New(logger.Config{
+	})
+	customLogger := logger.New(logger.Config{
 		// 2005-03-19 15:10:26,618 - simple_example - DEBUG - debug mess
 		Format:     "${date} ${time},${pid} - ${ip}:${port} - ${status} ${method} ${path}\n",
 		TimeFormat: "2006-01-02 15:04:05",
 		TimeZone:   "UTC",
-	}))
-	app.Use(recover.New())
+	})
 
-	// INITIALIZE SERVICES HERE
+	// ===== START SERVICES =====
+	serviceContainer := services.NewContainer(ctx)
+	defer func() {
+		if err := serviceContainer.Shutdown(); err != nil {
+			log.Printf("Error shutting down services: %v", err)
+		}
+	}()
+	serviceContainer.StartListeners()
+
+	// ===== START FIBER =====
+	app := fiber.New()
+
+	// Add middleware
+	app.Use(corsSettings)
+	app.Use(customLogger)
+	app.Use(recover.New())
 
 	// ROUTES
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to the gateway")
 	})
-	routes.FileRouter(app)
-
+	routes.FileRouter(app, serviceContainer)
+	routes.TestRouter(app, serviceContainer)
 	// SHUTDOWN GRACEFULLY
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
