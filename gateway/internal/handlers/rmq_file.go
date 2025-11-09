@@ -47,7 +47,7 @@ func RMQFileUpload(s *services.Container) fiber.Handler {
 			timeoutSeconds = 300 // 5 minutes max
 		}
 		timeout := time.Duration(timeoutSeconds) * time.Second
-		
+
 		// Pass the file reader directly - it will stream chunks without loading entire file into memory
 		response, err := s.FileHandler.UploadFileAndWait(
 			file.Filename,

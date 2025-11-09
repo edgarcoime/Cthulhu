@@ -4,6 +4,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// FileUploadStatus represents the status of a file upload operation
+type FileUploadStatus string
+
+const (
+	StatusInProgress FileUploadStatus = "in_progress"
+	StatusComplete   FileUploadStatus = "complete"
+	StatusError      FileUploadStatus = "error"
+)
+
 type File struct {
 	OriginalName string `json:"original_name"`
 	FileName     string `json:"file_name"`
@@ -20,7 +29,7 @@ type FileInfo struct {
 
 func FileUploadSuccessResponse(url string, totalSize int, files *[]File) *fiber.Map {
 	return &fiber.Map{
-		"status": true,
+		"status": string(StatusComplete),
 		"data": fiber.Map{
 			"url":        url,
 			"files":      files,
@@ -37,7 +46,7 @@ func FileUploadErrorResponse(err error) *fiber.Map {
 		errorMsg = err.Error()
 	}
 	return &fiber.Map{
-		"status": false,
+		"status": string(StatusError),
 		"data":   nil,
 		"error":  errorMsg,
 	}

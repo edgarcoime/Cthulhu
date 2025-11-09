@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"path/filepath"
 
+	"github.com/edgarcoime/Cthulhu-common/pkg/env"
 	"github.com/edgarcoime/Cthulhu-filemanager/internal/pkg"
 	"github.com/edgarcoime/Cthulhu-filemanager/internal/repository"
 	"github.com/edgarcoime/Cthulhu-filemanager/internal/server"
@@ -11,6 +13,10 @@ import (
 
 // TODO: Add air.toml config for hot reloading
 func main() {
+	// Load environment variables from .env file if it exists
+	// Look for .env in the filemanager directory
+	envPath := filepath.Join(".", ".env")
+	env.SetupEnvFile(envPath)
 	// Initialize repository
 	r, err := repository.NewLocalRepository(pkg.STORAGE_PATH)
 	if err != nil {
