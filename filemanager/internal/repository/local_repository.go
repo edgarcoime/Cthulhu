@@ -33,26 +33,26 @@ func (r *localRepository) Close() {
 	// No cleanup needed for local file storage
 }
 
-// SaveFile saves a file to the session ID folder
-// sessionID: 10-character UUID session identifier
+// SaveFile saves a file to the storage ID folder
+// storageID: 10-character UUID storage identifier
 // filename: name of the file to save
 // content: reader containing the file content
-func (r *localRepository) SaveFile(ctx context.Context, sessionID string, filename string, content io.Reader) error {
-	// Validate session ID length (10 characters as per requirements)
-	if len(sessionID) != 10 {
-		return fmt.Errorf("invalid session ID: must be exactly 10 characters")
+func (r *localRepository) SaveFile(ctx context.Context, storageID string, filename string, content io.Reader) error {
+	// Validate storage ID length (10 characters as per requirements)
+	if len(storageID) != 10 {
+		return fmt.Errorf("invalid storage ID: must be exactly 10 characters")
 	}
 
-	// Create session directory path
-	sessionDir := filepath.Join(r.dirPath, sessionID)
+	// Create storage directory path
+	storageDir := filepath.Join(r.dirPath, storageID)
 
-	// Create session directory if it doesn't exist
-	if err := os.MkdirAll(sessionDir, 0755); err != nil {
-		return fmt.Errorf("failed to create session directory: %w", err)
+	// Create storage directory if it doesn't exist
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		return fmt.Errorf("failed to create storage directory: %w", err)
 	}
 
 	// Create full file path
-	filePath := filepath.Join(sessionDir, filename)
+	filePath := filepath.Join(storageDir, filename)
 
 	// Create the file
 	file, err := os.Create(filePath)
@@ -72,16 +72,16 @@ func (r *localRepository) SaveFile(ctx context.Context, sessionID string, filena
 	return nil
 }
 
-// GetFile retrieves a file by session ID and filename
+// GetFile retrieves a file by storage ID and filename
 // Returns a ReadCloser that must be closed by the caller
-func (r *localRepository) GetFile(ctx context.Context, sessionID string, filename string) (io.ReadCloser, error) {
-	// Validate session ID length
-	if len(sessionID) != 10 {
-		return nil, fmt.Errorf("invalid session ID: must be exactly 10 characters")
+func (r *localRepository) GetFile(ctx context.Context, storageID string, filename string) (io.ReadCloser, error) {
+	// Validate storage ID length
+	if len(storageID) != 10 {
+		return nil, fmt.Errorf("invalid storage ID: must be exactly 10 characters")
 	}
 
 	// Create full file path
-	filePath := filepath.Join(r.dirPath, sessionID, filename)
+	filePath := filepath.Join(r.dirPath, storageID, filename)
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -97,25 +97,25 @@ func (r *localRepository) GetFile(ctx context.Context, sessionID string, filenam
 	return file, nil
 }
 
-// GetFilesBySession retrieves all files in a session folder
-func (r *localRepository) GetFilesBySession(ctx context.Context, sessionID string) ([]FileInfo, error) {
-	// Validate session ID length
-	if len(sessionID) != 10 {
-		return nil, fmt.Errorf("invalid session ID: must be exactly 10 characters")
+// GetFilesByStorage retrieves all files in a storage folder
+func (r *localRepository) GetFilesByStorage(ctx context.Context, storageID string) ([]FileInfo, error) {
+	// Validate storage ID length
+	if len(storageID) != 10 {
+		return nil, fmt.Errorf("invalid storage ID: must be exactly 10 characters")
 	}
 
-	// Create session directory path
-	sessionDir := filepath.Join(r.dirPath, sessionID)
+	// Create storage directory path
+	storageDir := filepath.Join(r.dirPath, storageID)
 
-	// Check if session directory exists
-	if _, err := os.Stat(sessionDir); os.IsNotExist(err) {
-		return []FileInfo{}, nil // Return empty slice if session doesn't exist
+	// Check if storage directory exists
+	if _, err := os.Stat(storageDir); os.IsNotExist(err) {
+		return []FileInfo{}, nil // Return empty slice if storage doesn't exist
 	}
 
 	// Read directory contents
-	entries, err := os.ReadDir(sessionDir)
+	entries, err := os.ReadDir(storageDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read session directory: %w", err)
+		return nil, fmt.Errorf("failed to read storage directory: %w", err)
 	}
 
 	var files []FileInfo
@@ -140,15 +140,15 @@ func (r *localRepository) GetFilesBySession(ctx context.Context, sessionID strin
 	return files, nil
 }
 
-// DeleteFile deletes a specific file from a session folder
-func (r *localRepository) DeleteFile(ctx context.Context, sessionID string, filename string) error {
-	// Validate session ID length
-	if len(sessionID) != 10 {
-		return fmt.Errorf("invalid session ID: must be exactly 10 characters")
+// DeleteFile deletes a specific file from a storage folder
+func (r *localRepository) DeleteFile(ctx context.Context, storageID string, filename string) error {
+	// Validate storage ID length
+	if len(storageID) != 10 {
+		return fmt.Errorf("invalid storage ID: must be exactly 10 characters")
 	}
 
 	// Create full file path
-	filePath := filepath.Join(r.dirPath, sessionID, filename)
+	filePath := filepath.Join(r.dirPath, storageID, filename)
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -163,24 +163,24 @@ func (r *localRepository) DeleteFile(ctx context.Context, sessionID string, file
 	return nil
 }
 
-// DeleteSession deletes an entire session folder and all its contents
-func (r *localRepository) DeleteSession(ctx context.Context, sessionID string) error {
-	// Validate session ID length
-	if len(sessionID) != 10 {
-		return fmt.Errorf("invalid session ID: must be exactly 10 characters")
+// DeleteStorage deletes an entire storage folder and all its contents
+func (r *localRepository) DeleteStorage(ctx context.Context, storageID string) error {
+	// Validate storage ID length
+	if len(storageID) != 10 {
+		return fmt.Errorf("invalid storage ID: must be exactly 10 characters")
 	}
 
-	// Create session directory path
-	sessionDir := filepath.Join(r.dirPath, sessionID)
+	// Create storage directory path
+	storageDir := filepath.Join(r.dirPath, storageID)
 
-	// Check if session directory exists
-	if _, err := os.Stat(sessionDir); os.IsNotExist(err) {
-		return fmt.Errorf("session not found: %s", sessionID)
+	// Check if storage directory exists
+	if _, err := os.Stat(storageDir); os.IsNotExist(err) {
+		return fmt.Errorf("storage not found: %s", storageID)
 	}
 
-	// Remove the entire session directory
-	if err := os.RemoveAll(sessionDir); err != nil {
-		return fmt.Errorf("failed to delete session folder: %w", err)
+	// Remove the entire storage directory
+	if err := os.RemoveAll(storageDir); err != nil {
+		return fmt.Errorf("failed to delete storage folder: %w", err)
 	}
 
 	return nil

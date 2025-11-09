@@ -7,11 +7,11 @@ import (
 
 type Repository interface {
 	Close()
-	SaveFile(ctx context.Context, sessionID string, filename string, content io.Reader) error
-	GetFile(ctx context.Context, sessionID string, filename string) (io.ReadCloser, error)
-	GetFilesBySession(ctx context.Context, sessionID string) ([]FileInfo, error)
-	DeleteFile(ctx context.Context, sessionID string, filename string) error
-	DeleteSession(ctx context.Context, sessionID string) error
+	SaveFile(ctx context.Context, storageID string, filename string, content io.Reader) error
+	GetFile(ctx context.Context, storageID string, filename string) (io.ReadCloser, error)
+	GetFilesByStorage(ctx context.Context, storageID string) ([]FileInfo, error)
+	DeleteFile(ctx context.Context, storageID string, filename string) error
+	DeleteStorage(ctx context.Context, storageID string) error
 }
 
 // FileInfo represents metadata about a stored file
