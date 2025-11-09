@@ -37,14 +37,24 @@ func RMQFileUpload(s *services.Container) fiber.Handler {
 		// Get storage ID from query parameter (optional)
 		storageID := c.Query("storage_id", "")
 
-		// Upload file via RabbitMQ and wait for response (30 second timeout)
+		// Upload file via RabbitMQ and wait for response
+		// Calculate timeout based on file size: 10 seconds per MB, minimum 30 seconds, maximum 5 minutes
+		timeoutSeconds := int64(fileSize/(1024*1024))*10 + 30
+		if timeoutSeconds < 30 {
+			timeoutSeconds = 30
+		}
+		if timeoutSeconds > 300 {
+			timeoutSeconds = 300 // 5 minutes max
+		}
+		timeout := time.Duration(timeoutSeconds) * time.Second
+		
 		// Pass the file reader directly - it will stream chunks without loading entire file into memory
 		response, err := s.FileHandler.UploadFileAndWait(
 			file.Filename,
 			fileHeader,
 			fileSize,
 			storageID,
-			30*time.Second,
+			timeout,
 		)
 		if err != nil {
 			return c.Status(500).JSON(presenter.FileUploadErrorResponse(fmt.Errorf("failed to upload file: %w", err)))

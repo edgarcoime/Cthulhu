@@ -41,7 +41,11 @@ func main() {
 	serviceContainer.StartListeners()
 
 	// ===== START FIBER =====
-	app := fiber.New()
+	// Configure Fiber with increased body size limit for file uploads
+	// Set to 100MB to allow for large file uploads
+	app := fiber.New(fiber.Config{
+		BodyLimit: 100 * 1024 * 1024, // 100MB
+	})
 
 	// Add middleware
 	app.Use(corsSettings)

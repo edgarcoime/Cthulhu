@@ -108,7 +108,13 @@ func (h *Handler) HandleFileManagerMessages(queueName string, msgs <-chan amqp.D
 		// Send response (skip if empty - used for chunk intermediate responses)
 		if response.TransactionID != "" {
 			transactionID := response.TransactionID
-			if err := h.sendResponse(queueName, transactionID, response, &msg); err != nil {
+			// For chunk responses, use "post.file" as the operation (not "post.file.chunk")
+			// so the response routing key matches what the gateway is listening for
+			responseQueueName := queueName
+			if queueName == "filemanager.post.file.chunk" {
+				responseQueueName = "filemanager.post.file"
+			}
+			if err := h.sendResponse(responseQueueName, transactionID, response, &msg); err != nil {
 				log.Printf("Failed to send response: %v", err)
 				continue
 			}
