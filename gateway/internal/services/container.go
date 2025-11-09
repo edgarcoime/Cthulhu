@@ -5,13 +5,15 @@ import (
 	"log"
 
 	"github.com/edgarcoime/Cthulhu-common/pkg/rabbitmq/manager"
+	"github.com/edgarcoime/Cthulhu-gateway/internal/services/handlers"
 )
 
 // TODO: create interface to fetch handlers
 
 type Container struct {
-	RMQManager *manager.Manager
-	Ctx        context.Context
+	RMQManager      *manager.Manager
+	Ctx             context.Context
+	DiagnoseHandler *handlers.DiagnoseHandler
 }
 
 func NewContainer(ctx context.Context) *Container {
@@ -35,10 +37,17 @@ func NewContainer(ctx context.Context) *Container {
 	rmqManager.StartHeartbeat(ctx)
 
 	// Create service handlers that will be communicating with
+	diagnoseHandler := handlers.NewDiagnoseHandler(rmqManager, ctx)
+
+	// setup queues and bindings
+	if err := diagnoseHandler.SetupQueuesAndBindings(); err != nil {
+		log.Fatalf("Failed to setup queues and bindings: %v", err)
+	}
 
 	return &Container{
-		RMQManager: rmqManager,
-		Ctx:        ctx,
+		RMQManager:      rmqManager,
+		Ctx:             ctx,
+		DiagnoseHandler: diagnoseHandler,
 	}
 }
 

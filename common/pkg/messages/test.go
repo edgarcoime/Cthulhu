@@ -1,31 +1,34 @@
 package messages
 
-// TestFanoutMessage represents a fanout message sent to all services for testing
-// Topic: test.services
-type TestFanoutMessage struct {
+// DiagnoseMessage represents a diagnostic message sent to services
+// Topic: diagnose.services.<operation>
+type DiagnoseMessage struct {
 	TransactionID string `json:"transaction_id"`
-	Message       string `json:"message"`
+	Operation     string `json:"operation"` // e.g., "health", "status", "load", "all"
+	Message       string `json:"message,omitempty"`
 }
 
-// TestFanoutResponseStatus represents the status of a test fanout response
-type TestFanoutResponseStatus string
+// DiagnoseResponseStatus represents the status of a diagnostic response
+type DiagnoseResponseStatus string
 
 const (
-	// TestFanoutStatusReceived indicates the message was received
-	TestFanoutStatusReceived TestFanoutResponseStatus = "received"
+	// DiagnoseStatusReceived indicates the message was received
+	DiagnoseStatusReceived DiagnoseResponseStatus = "received"
 
-	// TestFanoutStatusProcessed indicates the message was processed successfully
-	TestFanoutStatusProcessed TestFanoutResponseStatus = "processed"
+	// DiagnoseStatusProcessed indicates the message was processed successfully
+	DiagnoseStatusProcessed DiagnoseResponseStatus = "processed"
 
-	// TestFanoutStatusError indicates an error occurred while processing
-	TestFanoutStatusError TestFanoutResponseStatus = "error"
+	// DiagnoseStatusError indicates an error occurred while processing
+	DiagnoseStatusError DiagnoseResponseStatus = "error"
 )
 
-// TestFanoutResponse represents a response from a service after receiving a test fanout message
-// Topic: test.services.response
-type TestFanoutResponse struct {
-	TransactionID string                   `json:"transaction_id"`
-	ServiceName   string                   `json:"service_name"`
-	Status        TestFanoutResponseStatus `json:"status"`
-	Message       string                   `json:"message,omitempty"` // Optional response message
+// DiagnoseResponse represents a response from a service after receiving a diagnostic message
+// Topic: diagnose.services.response.<service-name>
+type DiagnoseResponse struct {
+	TransactionID string                 `json:"transaction_id"`
+	ServiceName   string                 `json:"service_name"`
+	Operation     string                 `json:"operation"` // The operation that was requested
+	Status        DiagnoseResponseStatus `json:"status"`
+	Message       string                 `json:"message,omitempty"` // Optional response message
+	Data          map[string]interface{} `json:"data,omitempty"`    // Optional operation-specific data
 }

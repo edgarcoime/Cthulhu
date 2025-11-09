@@ -1,10 +1,25 @@
 package messages
 
 // Topic constants for RabbitMQ routing
+// Using hierarchical structure: diagnose.services.<operation>
 const (
-	// TopicTestServices is the topic for test fanout messages (sent to all services)
-	TopicTestServices = "test.services"
+	// DiagnoseExchange is the exchange name for diagnostic messages
+	DiagnoseExchange = "diagnose"
 
-	// TopicTestServicesResponse is the topic for test fanout responses (responses from services)
-	TopicTestServicesResponse = "test.services.response"
+	// TopicDiagnoseServicesAll sends diagnostic messages to all services
+	// Services should bind with: diagnose.services.*
+	TopicDiagnoseServicesAll = "diagnose.services.all"
+
+	// TopicDiagnoseServicesHealth is for health check requests
+	TopicDiagnoseServicesHealth = "diagnose.services.health"
+
+	// TopicDiagnoseServicesStatus is for service status requests
+	TopicDiagnoseServicesStatus = "diagnose.services.status"
+
+	// TopicDiagnoseServicesLoad is for service load/metrics requests
+	TopicDiagnoseServicesLoad = "diagnose.services.load"
+
+	// TopicDiagnoseServicesResponse is the topic for diagnostic responses (responses from services)
+	// Format: diagnose.services.response.<service-name>
+	TopicDiagnoseServicesResponse = "diagnose.services.response"
 )
