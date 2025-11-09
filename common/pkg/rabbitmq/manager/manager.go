@@ -202,3 +202,37 @@ func (r *Manager) DeclareExchange(name, kind string, durable, autoDelete, intern
 		nil,        // arguments
 	)
 }
+
+// QueueBind binds a queue to an exchange with a routing key
+func (r *Manager) QueueBind(queue, routingKey, exchange string, noWait bool) error {
+	channel := r.GetChannel()
+	if channel == nil {
+		return fmt.Errorf("no active channel available")
+	}
+
+	return channel.QueueBind(
+		queue,      // queue name
+		routingKey, // routing key
+		exchange,   // exchange
+		noWait,     // no-wait
+		nil,        // arguments
+	)
+}
+
+// Consume starts consuming messages from a queue
+func (r *Manager) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool) (<-chan amqp.Delivery, error) {
+	channel := r.GetChannel()
+	if channel == nil {
+		return nil, fmt.Errorf("no active channel available")
+	}
+
+	return channel.Consume(
+		queue,     // queue
+		consumer,  // consumer tag
+		autoAck,   // auto-ack
+		exclusive, // exclusive
+		noLocal,   // no-local
+		noWait,    // no-wait
+		nil,       // arguments
+	)
+}
