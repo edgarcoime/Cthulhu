@@ -149,7 +149,7 @@ func (r *Manager) StartHeartbeat(ctx context.Context) {
 }
 
 // PublishMessage publishes a message to a queue
-func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey string, message []byte) error {
+func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey string, contentType string, message []byte) error {
 	channel := r.GetChannel()
 	if channel == nil {
 		return fmt.Errorf("no active channel available")
@@ -162,7 +162,7 @@ func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey strin
 		false,      // mandatory
 		false,      // immediate
 		amqp.Publishing{
-			ContentType: "text/plain",
+			ContentType: contentType,
 			Body:        message,
 		},
 	)
@@ -180,6 +180,24 @@ func (r *Manager) DeclareQueue(name string, durable, autoDelete, exclusive, noWa
 		durable,    // durable
 		autoDelete, // delete when unused
 		exclusive,  // exclusive
+		noWait,     // no-wait
+		nil,        // arguments
+	)
+}
+
+// DeclareExchange declares an exchange
+func (r *Manager) DeclareExchange(name, kind string, durable, autoDelete, internal, noWait bool) error {
+	channel := r.GetChannel()
+	if channel == nil {
+		return fmt.Errorf("no active channel available")
+	}
+
+	return channel.ExchangeDeclare(
+		name,       // name
+		kind,       // type: direct, topic, fanout, headers
+		durable,    // durable
+		autoDelete, // delete when unused
+		internal,   // internal
 		noWait,     // no-wait
 		nil,        // arguments
 	)
