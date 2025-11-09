@@ -34,6 +34,9 @@ const (
 	// TopicFileManagerPostFile is for uploading a single file (creates new storage)
 	TopicFileManagerPostFile = "filemanager.post.file"
 
+	// TopicFileManagerPostFileChunk is for uploading a file chunk (part of chunked upload)
+	TopicFileManagerPostFileChunk = "filemanager.post.file.chunk"
+
 	// TopicFileManagerPostFiles is for uploading multiple files (creates new storage if storageID is empty)
 	TopicFileManagerPostFiles = "filemanager.post.files"
 

@@ -140,6 +140,7 @@ func (s *rmqServer) setupExchangesAndQueues() error {
 		routingKey string
 	}{
 		{"filemanager.post.file", messages.TopicFileManagerPostFile},
+		{"filemanager.post.file.chunk", messages.TopicFileManagerPostFileChunk},
 		{"filemanager.post.files", messages.TopicFileManagerPostFiles},
 		{"filemanager.get.file", messages.TopicFileManagerGetFile},
 		{"filemanager.get.files", messages.TopicFileManagerGetFiles},
@@ -193,6 +194,7 @@ func (s *rmqServer) startConsumers() error {
 	// Start filemanager operation consumers
 	fileManagerQueues := []string{
 		"filemanager.post.file",
+		"filemanager.post.file.chunk",
 		"filemanager.post.files",
 		"filemanager.get.file",
 		"filemanager.get.files",

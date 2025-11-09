@@ -16,6 +16,31 @@ type FileManagerRequest struct {
 	// For now, we'll handle file content separately
 }
 
+// FileUploadRequest represents a file upload request with file content
+// This extends FileManagerRequest to include the actual file content
+type FileUploadRequest struct {
+	TransactionID string `json:"transaction_id"`
+	StorageID     string `json:"storage_id,omitempty"`
+	Filename      string `json:"filename"`
+	Content       string `json:"content"` // base64 encoded file content
+	Size          int64  `json:"size"`
+	IsChunked     bool   `json:"is_chunked,omitempty"` // true if this is part of a chunked upload
+	ChunkIndex    int    `json:"chunk_index,omitempty"` // chunk index (0-based)
+	TotalChunks   int    `json:"total_chunks,omitempty"` // total number of chunks
+}
+
+// FileChunkRequest represents a single chunk of a file
+type FileChunkRequest struct {
+	TransactionID string `json:"transaction_id"`
+	StorageID     string `json:"storage_id,omitempty"`
+	Filename      string `json:"filename"`
+	ChunkIndex    int    `json:"chunk_index"`    // chunk index (0-based)
+	TotalChunks   int    `json:"total_chunks"`   // total number of chunks
+	ChunkSize    int64  `json:"chunk_size"`       // size of this chunk in bytes
+	TotalSize    int64  `json:"total_size"`       // total file size in bytes
+	Content      string `json:"content"`          // base64 encoded chunk content
+}
+
 // FileManagerResponse represents a response from filemanager service
 type FileManagerResponse struct {
 	TransactionID string                 `json:"transaction_id"`

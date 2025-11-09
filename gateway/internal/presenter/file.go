@@ -32,10 +32,14 @@ func FileUploadSuccessResponse(url string, totalSize int, files *[]File) *fiber.
 }
 
 func FileUploadErrorResponse(err error) *fiber.Map {
+	errorMsg := ""
+	if err != nil {
+		errorMsg = err.Error()
+	}
 	return &fiber.Map{
 		"status": false,
 		"data":   nil,
-		"error":  err,
+		"error":  errorMsg,
 	}
 }
 

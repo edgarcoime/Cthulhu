@@ -14,6 +14,7 @@ type Container struct {
 	RMQManager      *manager.Manager
 	Ctx             context.Context
 	DiagnoseHandler *handlers.DiagnoseHandler
+	FileHandler     *handlers.FileHandler
 }
 
 func NewContainer(ctx context.Context) *Container {
@@ -38,16 +39,21 @@ func NewContainer(ctx context.Context) *Container {
 
 	// Create service handlers that will be communicating with
 	diagnoseHandler := handlers.NewDiagnoseHandler(rmqManager, ctx)
+	fileHandler := handlers.NewFileHandler(rmqManager, ctx)
 
 	// setup queues and bindings
 	if err := diagnoseHandler.SetupQueuesAndBindings(); err != nil {
 		log.Fatalf("Failed to setup queues and bindings: %v", err)
+	}
+	if err := fileHandler.SetupQueuesAndBindings(); err != nil {
+		log.Fatalf("Failed to setup file handler queues and bindings: %v", err)
 	}
 
 	return &Container{
 		RMQManager:      rmqManager,
 		Ctx:             ctx,
 		DiagnoseHandler: diagnoseHandler,
+		FileHandler:     fileHandler,
 	}
 }
 
