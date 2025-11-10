@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/edgarcoime/Cthulhu-common/pkg/messages"
@@ -116,5 +117,105 @@ func RMQFileUpload(s *services.Container) fiber.Handler {
 		// Return success response
 		res := presenter.FileUploadSuccessResponse(urlString, int(totalSize), &uploadedFiles)
 		return c.JSON(res)
+	}
+}
+
+func RMQFileAccess(s *services.Container) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		id := c.Params("id")
+
+		// Validate the ID format
+		if len(id) != 10 {
+			return c.Status(400).JSON(presenter.FileAccessErrorResponse("Invalid ID format. Must be exactly 10 characters."))
+		}
+
+		for _, char := range id {
+			if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')) {
+				return c.Status(400).JSON(presenter.FileAccessErrorResponse("Invalid ID format. Only lowercase letters and numbers are allowed."))
+			}
+		}
+
+		// Get files via RabbitMQ with a reasonable timeout (30 seconds)
+		timeout := 30 * time.Second
+		response, err := s.FileHandler.GetFilesAndWait(id, timeout)
+		if err != nil {
+			return c.Status(500).JSON(presenter.FileAccessErrorResponse(fmt.Sprintf("Failed to retrieve files: %v", err)))
+		}
+
+		// Check if request was successful
+		if !response.Success {
+			return c.Status(404).JSON(presenter.FileAccessErrorResponse(response.Error))
+		}
+
+		// Convert response files to FileInfo format
+		var fileList []presenter.FileInfo
+		for _, fileInfo := range response.Files {
+			fileList = append(fileList, presenter.FileInfo{
+				Name:     fileInfo.Filename,
+				Filename: fileInfo.Filename,
+				Size:     fileInfo.Size,
+				URL:      fmt.Sprintf("/files/s/%s/d/%s", id, fileInfo.Filename),
+			})
+		}
+
+		res := presenter.FileAccessSuccessResponse(id, &fileList)
+		return c.JSON(res)
+	}
+}
+
+func RMQFileDownload(s *services.Container) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Get the ID and filename from URL parameters
+		id := c.Params("id")
+		filename := c.Params("filename")
+
+		// Validate the ID format
+		if len(id) != 10 {
+			return c.Status(400).JSON(presenter.FileDownloadErrorResponse("Invalid ID format. Must be exactly 10 characters."))
+		}
+
+		for _, char := range id {
+			if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')) {
+				return c.Status(400).JSON(presenter.FileDownloadErrorResponse("Invalid ID format. Only lowercase letters and numbers are allowed."))
+			}
+		}
+
+		// Validate filename is not empty
+		if filename == "" {
+			return c.Status(400).JSON(presenter.FileDownloadErrorResponse("Filename cannot be empty."))
+		}
+
+		// Calculate timeout based on expected file size (estimate: 1 second per MB, minimum 30 seconds)
+		// Since we don't know the size yet, use a reasonable default
+		timeout := 60 * time.Second
+
+		// Retrieve file content via RabbitMQ
+		response, fileContent, err := s.FileHandler.GetFileAndWait(id, filename, timeout)
+		if err != nil {
+			return c.Status(500).JSON(presenter.FileDownloadErrorResponse(fmt.Sprintf("Failed to retrieve file: %v", err)))
+		}
+
+		// Check if request was successful
+		if !response.Success {
+			return c.Status(404).JSON(presenter.FileDownloadErrorResponse(response.Error))
+		}
+
+		// Check if we received file content
+		if fileContent == nil || len(fileContent) == 0 {
+			return c.Status(500).JSON(presenter.FileDownloadErrorResponse("No file content received"))
+		}
+
+		// Extract original filename for download (if filename has timestamp prefix)
+		originalName := filename
+		if parts := strings.SplitN(filename, "_", 3); len(parts) >= 3 {
+			originalName = parts[2] // Get everything after timestamp_XX_
+		}
+
+		// Set the Content-Disposition header to use the original filename
+		c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", originalName))
+		c.Set("Content-Type", "application/octet-stream")
+
+		// Send the file content
+		return c.Send(fileContent)
 	}
 }

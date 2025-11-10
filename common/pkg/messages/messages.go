@@ -57,4 +57,8 @@ const (
 	// Format: filemanager.response.<operation>.<transaction-id>
 	// Example: filemanager.response.post.file.abc123
 	TopicFileManagerResponse = "filemanager.response"
+
+	// TopicFileManagerGetFileChunk is for receiving file chunks during download
+	// Format: filemanager.response.get.file.chunk.<transaction-id>
+	TopicFileManagerGetFileChunk = "filemanager.response.get.file.chunk"
 )

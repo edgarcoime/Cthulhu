@@ -14,4 +14,6 @@ func FileRouter(app fiber.Router, services *services.Container) {
 
 	// new
 	app.Post("/files/upload", handlers.RMQFileUpload(services))
+	app.Get("/files/s/:id", handlers.RMQFileAccess(services))
+	app.Get("/files/s/:id/d/:filename", handlers.RMQFileDownload(services))
 }

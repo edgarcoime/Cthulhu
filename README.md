@@ -139,7 +139,7 @@ You can use Postman or curl. Right now the gateway is expecting the files in for
 ```bash
 cd <root of project>
 
-curl --location 'http://localhost:4000/files/upload/rmq' \
+curl --location 'http://localhost:4000/files/upload' \
   --form 'file=@./testfiles/test1.txt' \
   --form 'file=@./testfiles/test2.txt' \
   --form 'file=@./testfiles/test3.txt' \
