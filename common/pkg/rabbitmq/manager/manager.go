@@ -1,4 +1,4 @@
-package rabbitmq
+package manager
 
 import (
 	"context"
@@ -20,11 +20,12 @@ type Manager struct {
 
 // Config holds RabbitMQ connection configuration
 type Config struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	VHost    string
+	User           string
+	Password       string
+	Host           string
+	Port           string
+	VHost          string
+	ConnectionName string // Optional: label for the connection in RabbitMQ management console
 }
 
 // NewManager creates a new RabbitMQ manager
@@ -46,7 +47,17 @@ func (r *Manager) Connect(ctx context.Context) error {
 		r.config.Port,
 		r.config.VHost)
 
-	conn, err := amqp.Dial(url)
+	// Configure client properties for connection labeling
+	config := amqp.Config{
+		Properties: amqp.Table{},
+	}
+
+	// Set connection name if provided (visible in RabbitMQ management console)
+	if r.config.ConnectionName != "" {
+		config.Properties["connection_name"] = r.config.ConnectionName
+	}
+
+	conn, err := amqp.DialConfig(url, config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
@@ -138,7 +149,7 @@ func (r *Manager) StartHeartbeat(ctx context.Context) {
 }
 
 // PublishMessage publishes a message to a queue
-func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey string, message []byte) error {
+func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey string, contentType string, message []byte) error {
 	channel := r.GetChannel()
 	if channel == nil {
 		return fmt.Errorf("no active channel available")
@@ -151,7 +162,7 @@ func (r *Manager) PublishMessage(ctx context.Context, exchange, routingKey strin
 		false,      // mandatory
 		false,      // immediate
 		amqp.Publishing{
-			ContentType: "text/plain",
+			ContentType: contentType,
 			Body:        message,
 		},
 	)
@@ -171,5 +182,57 @@ func (r *Manager) DeclareQueue(name string, durable, autoDelete, exclusive, noWa
 		exclusive,  // exclusive
 		noWait,     // no-wait
 		nil,        // arguments
+	)
+}
+
+// DeclareExchange declares an exchange
+func (r *Manager) DeclareExchange(name, kind string, durable, autoDelete, internal, noWait bool) error {
+	channel := r.GetChannel()
+	if channel == nil {
+		return fmt.Errorf("no active channel available")
+	}
+
+	return channel.ExchangeDeclare(
+		name,       // name
+		kind,       // type: direct, topic, fanout, headers
+		durable,    // durable
+		autoDelete, // delete when unused
+		internal,   // internal
+		noWait,     // no-wait
+		nil,        // arguments
+	)
+}
+
+// QueueBind binds a queue to an exchange with a routing key
+func (r *Manager) QueueBind(queue, routingKey, exchange string, noWait bool) error {
+	channel := r.GetChannel()
+	if channel == nil {
+		return fmt.Errorf("no active channel available")
+	}
+
+	return channel.QueueBind(
+		queue,      // queue name
+		routingKey, // routing key
+		exchange,   // exchange
+		noWait,     // no-wait
+		nil,        // arguments
+	)
+}
+
+// Consume starts consuming messages from a queue
+func (r *Manager) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool) (<-chan amqp.Delivery, error) {
+	channel := r.GetChannel()
+	if channel == nil {
+		return nil, fmt.Errorf("no active channel available")
+	}
+
+	return channel.Consume(
+		queue,     // queue
+		consumer,  // consumer tag
+		autoAck,   // auto-ack
+		exclusive, // exclusive
+		noLocal,   // no-local
+		noWait,    // no-wait
+		nil,       // arguments
 	)
 }

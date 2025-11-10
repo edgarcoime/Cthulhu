@@ -21,8 +21,8 @@ CTHULHU is an anonymous, file sharing platform that lets anyone upload up to 1 G
 
 ## Prerequisites
 
-- Golang 1.25.1 - [download](https://go.dev/doc/install)
-- Node 22.22.0 - [download](https://nodejs.org/en/download)
+- Golang 1.25.3 - [download](https://go.dev/doc/install)
+- Node 23.11.0 - [download](https://nodejs.org/en/download)
 - Docker 28.4.0 (Any recent version is fine) - [download](https://docs.docker.com/engine/install/)
 - Make (Most UNIX based systems have it otherwise install using package manager)
 
@@ -47,6 +47,13 @@ docker run -d --name cthulhu-rabbitmq \
 # Check if container is running
 docker ps
 ```
+
+Can look at the admin platform at [dashboard](http://localhost:15672).
+
+The default credentials are:
+
+- username: _guest_
+- password: _guest_
 
 ### 2. Start by using root Makefile
 
@@ -124,3 +131,17 @@ docker run -p 4000:4000 \
 ### Filemanager
 
 Work in progress not fully implemented and working with Docker yet
+
+### Testing functionality
+
+You can use Postman or curl. Right now the gateway is expecting the files in formdata form.
+
+```bash
+cd <root of project>
+
+curl --location 'http://localhost:4000/files/upload' \
+  --form 'file=@./testfiles/test1.txt' \
+  --form 'file=@./testfiles/test2.txt' \
+  --form 'file=@./testfiles/test3.txt' \
+  --form 'file=@./testfiles/test_med.pdf'
+```

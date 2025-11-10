@@ -1,12 +1,13 @@
-module cthulhu-filemanager
+module github.com/edgarcoime/Cthulhu-filemanager
 
-go 1.25.1
+go 1.25.3
+
+replace github.com/edgarcoime/Cthulhu-common => ../common
 
 require (
-	cthulhu-shared v0.0.0
-	github.com/joho/godotenv v1.5.1
+	github.com/edgarcoime/Cthulhu-common v0.0.0-00010101000000-000000000000
+	github.com/google/uuid v1.6.0
+	github.com/rabbitmq/amqp091-go v1.10.0
 )
 
-require github.com/rabbitmq/amqp091-go v1.10.0
-
-replace cthulhu-shared => ../pkg
+require github.com/joho/godotenv v1.5.1 // indirect

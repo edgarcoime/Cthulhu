@@ -4,6 +4,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// FileUploadStatus represents the status of a file upload operation
+type FileUploadStatus string
+
+const (
+	StatusInProgress FileUploadStatus = "in_progress"
+	StatusComplete   FileUploadStatus = "complete"
+	StatusError      FileUploadStatus = "error"
+)
+
 type File struct {
 	OriginalName string `json:"original_name"`
 	FileName     string `json:"file_name"`
@@ -20,7 +29,7 @@ type FileInfo struct {
 
 func FileUploadSuccessResponse(url string, totalSize int, files *[]File) *fiber.Map {
 	return &fiber.Map{
-		"status": true,
+		"status": string(StatusComplete),
 		"data": fiber.Map{
 			"url":        url,
 			"files":      files,
@@ -32,10 +41,14 @@ func FileUploadSuccessResponse(url string, totalSize int, files *[]File) *fiber.
 }
 
 func FileUploadErrorResponse(err error) *fiber.Map {
+	errorMsg := ""
+	if err != nil {
+		errorMsg = err.Error()
+	}
 	return &fiber.Map{
-		"status": false,
+		"status": string(StatusError),
 		"data":   nil,
-		"error":  err,
+		"error":  errorMsg,
 	}
 }
 
@@ -64,15 +77,5 @@ func FileDownloadErrorResponse(message string) *fiber.Map {
 		"status": false,
 		"data":   nil,
 		"error":  message,
-	}
-}
-
-// Dummy
-// BookErrorResponse is the ErrorResponse that will be passed in the response by Handler
-func BookErrorResponse(err error) *fiber.Map {
-	return &fiber.Map{
-		"status": false,
-		"data":   "",
-		"error":  err.Error(),
 	}
 }

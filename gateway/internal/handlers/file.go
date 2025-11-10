@@ -1,190 +1,39 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"cthulhu-gateway/internal/pkg"
-	"cthulhu-gateway/internal/presenter"
-	"cthulhu-gateway/pkg/file"
-
+	"github.com/edgarcoime/Cthulhu-gateway/internal/pkg"
+	"github.com/edgarcoime/Cthulhu-gateway/internal/presenter"
 	"github.com/gofiber/fiber/v2"
 )
 
-// generateRandomURL generates a unique random 10-character URL string (lowercase only)
-func generateRandomURL() string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	const length = 10
-
-	// Seed the random number generator
-	for {
-		url := make([]byte, length)
-		for i := range url {
-			url[i] = charset[rand.Intn(len(charset))]
-		}
-
-		urlString := string(url)
-
-		// Check if the generated URL already exists as a folder
-		urlPath := filepath.Join(pkg.FILE_FOLDER, urlString)
-		if _, err := os.Stat(urlPath); os.IsNotExist(err) {
-			// Folder doesn't exist, this URL is unique
-			return urlString
-		}
-
-		// Folder exists, generate another URL
-	}
-}
-
-func UploadFile(service file.Service) fiber.Handler {
+func UploadFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Parse the multipart form
-		form, err := c.MultipartForm()
-		if err != nil {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "Failed to parse multipart form",
-			})
-		}
-
-		// Get the files from the form
-		files := form.File["file"]
-		if len(files) == 0 {
-			return c.Status(400).JSON(fiber.Map{
-				"error": "No files provided",
-			})
-		}
-
-		// Generate a random URL string for this upload session
-		urlString := generateRandomURL()
-
-		// Create a folder for this upload session
-		sessionFolder := filepath.Join(pkg.FILE_FOLDER, urlString)
-		if err := os.MkdirAll(sessionFolder, 0o755); err != nil {
-			return c.Status(500).JSON(presenter.FileUploadErrorResponse(err))
-		}
-
+		urlString := "testurl"
 		var uploadedFiles []presenter.File
 		var totalSize int64
-		timestamp := time.Now().Format("20060102_150405")
+		// timestamp := time.Now().Format("20060102_150405")
 
-		for i, file := range files {
-
-			// Generate a unique filename with timestamp and index
-			// Keep the original filename but add timestamp and index prefix
-			filename := fmt.Sprintf("%s_%d_%s", timestamp, i+1, file.Filename)
-			filePath := filepath.Join(sessionFolder, filename)
-
-			// Open the uploaded file
-			src, err := file.Open()
-			if err != nil {
-				return c.Status(500).JSON(presenter.FileUploadErrorResponse(err))
-			}
-
-			// Create the destination file
-			dst, err := os.Create(filePath)
-			if err != nil {
-				src.Close()
-				return c.Status(500).JSON(presenter.FileUploadErrorResponse(err))
-			}
-
-			// Copy the file content
-			_, err = io.Copy(dst, src)
-			src.Close()
-			dst.Close()
-
-			if err != nil {
-				return c.Status(500).JSON(presenter.FileUploadErrorResponse(err))
-			}
-
-			// Add file info to the response
-			newFile := presenter.File{
-				OriginalName: file.Filename,
-				FileName:     filename,
-				Size:         int(file.Size),
-				Path:         filePath,
-			}
-			uploadedFiles = append(uploadedFiles, newFile)
-
-			totalSize += file.Size
-		}
-
-		return c.JSON(presenter.FileUploadSuccessResponse(urlString, int(totalSize), &uploadedFiles))
+		res := presenter.FileUploadSuccessResponse(urlString, int(totalSize), &uploadedFiles)
+		return c.JSON(res)
 	}
 }
 
-func FileAccess(service file.Service) fiber.Handler {
+func FileAccess() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Get the ID from the URL parameter
 		id := c.Params("id")
-
-		// Validate the ID format (10 characters, alphanumeric lowercase only)
-		if len(id) != 10 {
-			return c.Status(400).JSON(presenter.FileAccessErrorResponse("Invalid ID format. Must be exactly 10 characters."))
-		}
-
-		// Check if ID contains only valid characters
-		for _, char := range id {
-			if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')) {
-				return c.Status(400).JSON(presenter.FileAccessErrorResponse("Invalid ID format. Only lowercase letters and numbers are allowed."))
-			}
-		}
-
-		// Check if the session folder exists
-		sessionFolder := filepath.Join(pkg.FILE_FOLDER, id)
-		if _, err := os.Stat(sessionFolder); os.IsNotExist(err) {
-			return c.Status(404).JSON(presenter.FileAccessErrorResponse("Session not found. The provided ID does not exist."))
-		}
-
-		// Read all files in the session folder
-		files, err := os.ReadDir(sessionFolder)
-		if err != nil {
-			return c.Status(500).JSON(presenter.FileAccessErrorResponse("Failed to read session files"))
-		}
-
-		// If no files found
-		if len(files) == 0 {
-			return c.Status(404).JSON(presenter.FileAccessErrorResponse("No files found in this session"))
-		}
-
-		// Prepare file information
 		var fileList []presenter.FileInfo
-		for _, file := range files {
-			if !file.IsDir() {
-				filePath := filepath.Join(sessionFolder, file.Name())
-				fileInfo, err := os.Stat(filePath)
-				if err != nil {
-					continue // Skip files that can't be read
-				}
 
-				// Extract original filename by removing timestamp and index prefix
-				originalName := file.Name()
-				// Remove timestamp_XX_ prefix to get original filename
-				if parts := strings.SplitN(file.Name(), "_", 3); len(parts) >= 3 {
-					originalName = parts[2] // Get everything after timestamp_XX_
-				}
-
-				fileList = append(fileList, presenter.FileInfo{
-					Name:     originalName,
-					Filename: file.Name(), // Keep the actual stored filename for download
-					Size:     fileInfo.Size(),
-					URL:      fmt.Sprintf("/files/s/%s/d/%s", id, file.Name()),
-				})
-			}
-		}
-
-		// Return the file list
-		return c.JSON(presenter.FileAccessSuccessResponse(id, &fileList))
+		res := presenter.FileAccessSuccessResponse(id, &fileList)
+		return c.JSON(res)
 	}
 }
 
-func FileDownload(service file.Service) fiber.Handler {
+func FileDownload() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Get the ID and filename from URL parameters
 		id := c.Params("id")
@@ -226,45 +75,5 @@ func FileDownload(service file.Service) fiber.Handler {
 
 		// Send the file
 		return c.SendFile(filePath)
-	}
-}
-
-// TestRabbitMQ demonstrates interop between gateway and filemanager via RabbitMQ
-func TestRabbitMQ(service file.Service) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		// Create a test message
-		testMessage := map[string]interface{}{
-			"message":    "Hello from Gateway!",
-			"timestamp":  time.Now().Unix(),
-			"request_id": fmt.Sprintf("req_%d", time.Now().UnixNano()),
-		}
-
-		// Convert to JSON
-		messageBytes, err := json.Marshal(testMessage)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": "Failed to marshal test message",
-			})
-		}
-
-		// Send message to filemanager queue
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		err = service.SendTestMessage(ctx, messageBytes)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to send message to filemanager: %v", err),
-			})
-		}
-
-		// Wait for response (this would typically be handled asynchronously)
-		// For demo purposes, we'll simulate waiting and return success
-		return c.JSON(fiber.Map{
-			"status":    "success",
-			"message":   "Test message sent to filemanager successfully",
-			"sent_at":   time.Now().Format(time.RFC3339),
-			"test_data": testMessage,
-		})
 	}
 }

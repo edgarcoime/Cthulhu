@@ -1,0 +1,10 @@
+go 1.25.3
+
+use (
+	./auth
+	./common
+	./filemanager
+	./gateway
+	./lifecycle
+	./security
+)
