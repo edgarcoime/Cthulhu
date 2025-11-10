@@ -7,8 +7,13 @@ import (
 )
 
 func FileRouter(app fiber.Router, services *services.Container) {
-	app.Post("/files/upload", handlers.UploadFile())
-	app.Post("/files/upload/rmq", handlers.RMQFileUpload(services))
-	app.Get("/files/s/:id", handlers.FileAccess())
-	app.Get("/files/s/:id/d/:filename", handlers.FileDownload())
+	// OLD version
+	// app.Post("/files/upload", handlers.UploadFile())
+	// app.Get("/files/s/:id", handlers.FileAccess())
+	// app.Get("/files/s/:id/d/:filename", handlers.FileDownload())
+
+	// new
+	app.Post("/files/upload", handlers.RMQFileUpload(services))
+	app.Get("/files/s/:id", handlers.RMQFileAccess(services))
+	app.Get("/files/s/:id/d/:filename", handlers.RMQFileDownload(services))
 }

@@ -5,12 +5,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/edgarcoime/Cthulhu-common/pkg/messages"
 	"github.com/edgarcoime/Cthulhu-filemanager/internal/service"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+// ChunkSize is the maximum size of a chunk in bytes (1MB)
+// This ensures messages stay well under RabbitMQ's practical limits
+const ChunkSize = 1024 * 1024 // 1MB
 
 // HandleFileManagerMessages processes filemanager operation messages
 func (h *Handler) HandleFileManagerMessages(queueName string, msgs <-chan amqp.Delivery) {
@@ -259,7 +264,17 @@ func (h *Handler) handleFileChunk(chunkRequest messages.FileChunkRequest, msg *a
 		Size:     chunkRequest.TotalSize,
 	}
 
-	result, err := h.service.PostFile(h.ctx, chunkRequest.TransactionID, fileUpload)
+	// If storageID is provided, use PostFiles to add to existing storage
+	// Otherwise, use PostFile to create new storage
+	var result *service.UploadResult
+	if metadata.storageID != "" {
+		// Add file to existing storage
+		result, err = h.service.PostFiles(h.ctx, chunkRequest.TransactionID, metadata.storageID, []service.FileUpload{fileUpload})
+	} else {
+		// Create new storage
+		result, err = h.service.PostFile(h.ctx, chunkRequest.TransactionID, fileUpload)
+	}
+
 	if err != nil {
 		return messages.FileManagerResponse{
 			TransactionID: chunkRequest.TransactionID,
@@ -305,8 +320,17 @@ func (h *Handler) handlePostFileWithContent(uploadRequest messages.FileUploadReq
 		Size:     uploadRequest.Size,
 	}
 
-	// Upload the file
-	result, err := h.service.PostFile(h.ctx, uploadRequest.TransactionID, fileUpload)
+	// If storageID is provided, use PostFiles to add to existing storage
+	// Otherwise, use PostFile to create new storage
+	var result *service.UploadResult
+	if uploadRequest.StorageID != "" {
+		// Add file to existing storage
+		result, err = h.service.PostFiles(h.ctx, uploadRequest.TransactionID, uploadRequest.StorageID, []service.FileUpload{fileUpload})
+	} else {
+		// Create new storage
+		result, err = h.service.PostFile(h.ctx, uploadRequest.TransactionID, fileUpload)
+	}
+
 	if err != nil {
 		return messages.FileManagerResponse{
 			TransactionID: uploadRequest.TransactionID,
@@ -362,15 +386,79 @@ func (h *Handler) handleGetFile(request messages.FileManagerRequest) (messages.F
 	}
 	defer fileReader.Close()
 
-	// TODO: For file content, we might need to send it via a different mechanism
-	// For now, just return success
+	// TODO: optimize to stream for bigger files maybe through websockets
+	// Read entire file into memory to get size and chunk it
+	// For very large files, this could be optimized to stream, but for now this is simpler
+	fileContent, err := io.ReadAll(fileReader)
+	if err != nil {
+		return messages.FileManagerResponse{
+			TransactionID: request.TransactionID,
+			Success:       false,
+			Error:         fmt.Sprintf("failed to read file: %v", err),
+		}, nil
+	}
+
+	fileSize := int64(len(fileContent))
+	totalChunks := int((fileSize + ChunkSize - 1) / ChunkSize) // Ceiling division
+
+	// Send file in chunks
+	for chunkIndex := range totalChunks {
+		start := chunkIndex * ChunkSize
+		end := min(start+ChunkSize, len(fileContent))
+
+		chunkData := fileContent[start:end]
+		encodedChunk := base64.StdEncoding.EncodeToString(chunkData)
+
+		chunkResponse := messages.FileChunkResponse{
+			TransactionID: request.TransactionID,
+			StorageID:     request.StorageID,
+			Filename:      request.Filename,
+			ChunkIndex:    chunkIndex,
+			TotalChunks:   totalChunks,
+			ChunkSize:     int64(len(chunkData)),
+			TotalSize:     fileSize,
+			Content:       encodedChunk,
+			IsLastChunk:   chunkIndex == totalChunks-1,
+		}
+
+		chunkBody, err := json.Marshal(chunkResponse)
+		if err != nil {
+			log.Printf("Failed to marshal chunk %d: %v", chunkIndex, err)
+			return messages.FileManagerResponse{
+				TransactionID: request.TransactionID,
+				Success:       false,
+				Error:         fmt.Sprintf("failed to marshal chunk %d: %v", chunkIndex, err),
+			}, nil
+		}
+
+		// Publish chunk with routing key: filemanager.response.get.file.chunk.<transaction-id>
+		chunkRoutingKey := fmt.Sprintf("%s.%s", messages.TopicFileManagerGetFileChunk, request.TransactionID)
+		if err := h.manager.PublishMessage(
+			h.ctx,
+			messages.FileManagerExchange,
+			chunkRoutingKey,
+			"application/json",
+			chunkBody,
+		); err != nil {
+			log.Printf("Failed to publish chunk %d: %v", chunkIndex, err)
+			return messages.FileManagerResponse{
+				TransactionID: request.TransactionID,
+				Success:       false,
+				Error:         fmt.Sprintf("failed to publish chunk %d: %v", chunkIndex, err),
+			}, nil
+		}
+	}
+
+	// Return success response indicating file will be sent in chunks
 	return messages.FileManagerResponse{
 		TransactionID: request.TransactionID,
 		Success:       true,
 		StorageID:     request.StorageID,
 		Data: map[string]interface{}{
-			"filename": request.Filename,
-			"note":     "File content should be retrieved via separate mechanism",
+			"filename":     request.Filename,
+			"total_size":   fileSize,
+			"total_chunks": totalChunks,
+			"note":         "File content is being sent in chunks",
 		},
 	}, nil
 }

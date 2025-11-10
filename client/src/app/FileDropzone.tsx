@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Link from 'next/link';
 import { COLORS } from "@/constants"
 import { API_ENDPOINTS } from "@/constants/api"
 
@@ -54,6 +55,7 @@ export default function FileDropzone(_props: FileDropzoneProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [fileId, setFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
@@ -93,7 +95,12 @@ export default function FileDropzone(_props: FileDropzoneProps) {
 
       // Show success message with link - access data from the new response structure
       if (res.data) {
-        setUploadProgress(`✅ Upload successful! Access your files at: /files/${res.data.url}`);
+        // Extract ID from URL (format: /files/s/{id})
+        const urlMatch = res.data.url.match(/\/files\/s\/([^\/]+)/);
+        const extractedId = urlMatch ? urlMatch[1] : null;
+        
+        setFileId(extractedId);
+        setUploadProgress(`✅ Upload successful! Access your files:`);
       }
 
       // Clear the file input
@@ -105,6 +112,7 @@ export default function FileDropzone(_props: FileDropzoneProps) {
       setTimeout(() => {
         setUploadProgress('');
         setUploadedFiles([]);
+        setFileId(null);
       }, 5000);
 
     } catch (error) {
@@ -150,7 +158,17 @@ export default function FileDropzone(_props: FileDropzoneProps) {
         </p>
         {uploadProgress && (
           <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: uploadProgress.includes('✅') ? '#d1fae5' : uploadProgress.includes('❌') ? '#fee2e2' : '#dbeafe' }}>
-            <p className="text-sm font-medium">{uploadProgress}</p>
+            <p className="text-sm font-medium">
+              {uploadProgress}
+              {fileId && (
+                <Link 
+                  href={`/files/${fileId}`}
+                  className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                >
+                  /files/{fileId}
+                </Link>
+              )}
+            </p>
           </div>
         )}
       </div>
